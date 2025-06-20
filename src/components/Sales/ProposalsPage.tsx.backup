@@ -1,0 +1,1424 @@
+import React, { useState, useMemo, useCallback, memo } from 'react';
+import { Search, Filter, Plus, Download, Eye, Edit3, Trash2, Copy, FileText, Send, Calendar, DollarSign, User, Building, Clock, CheckCircle, AlertCircle, Star, Layout, Briefcase, Zap, Target, Globe, Smartphone, Code, Megaphone, Camera, PenTool, TrendingUp, X, ArrowRight, Save, Type, Image, Layers, Settings2, Monitor, Tablet, Smartphone as SmartphoneIcon, BookOpen, Crown, Sparkles, ChevronDown, Bold, Italic, Underline, AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Link, RotateCcw, RotateCw } from 'lucide-react';
+
+interface Proposal {
+  id: string;
+  title: string;
+  clientName: string;
+  clientLocation: string;
+  serviceInterested: string;
+  website: string;
+  contactNumber: string;
+  amount: number;
+  currency: string;
+  status: 'draft' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'expired';
+  createdDate: string;
+  lastModified: string;
+  dueDate: string;
+  templateId: string;
+  templateName: string;
+  templateTeam: string;
+  description: string;
+  tags: string[];
+  viewCount: number;
+  lastViewed?: string;
+  content: string;
+  designSettings: {
+    theme: 'modern' | 'creative' | 'corporate' | 'minimal' | 'elegant';
+    primaryColor: string;
+    fontSize: 'small' | 'medium' | 'large';
+    fontFamily: 'inter' | 'poppins' | 'roboto' | 'playfair';
+    spacing: 'compact' | 'normal' | 'spacious';
+  };
+}
+
+interface ProposalSection {
+  id: string;
+  type: 'cover' | 'about' | 'services' | 'timeline' | 'pricing' | 'terms' | 'custom';
+  title: string;
+  content: string;
+  order: number;
+  isEditing?: boolean;
+}
+
+interface ProposalPage {
+  id: string;
+  title: string;
+  content: string;
+  order: number;
+  sections: ProposalSection[];
+}
+
+interface ProposalTemplate {
+  id: string;
+  name: string;
+  description: string;
+  team: string;
+  category: string;
+  thumbnail: string;
+  color: string;
+  fontFamily: 'inter' | 'poppins' | 'roboto' | 'playfair';
+  icon: React.ComponentType<any>;
+  content: string;
+  isPopular?: boolean;
+  isPremium?: boolean;
+}
+
+interface ProposalModalProps {
+  isOpen: boolean;
+  proposal: Proposal | null;
+  onClose: () => void;
+  onSave: (proposal: Proposal) => void;
+  onDelete: (proposalId: string) => void;
+  templates: ProposalTemplate[];
+}
+
+// Memoized Proposal Card Component for better performance
+interface ProposalCardProps {
+  proposal: Proposal;
+  onEdit: (proposal: Proposal) => void;
+  onDuplicate: (proposal: Proposal) => void;
+  onDownload: (proposal: Proposal) => void;
+  onDelete: (proposalId: string) => void;
+  getStatusColor: (status: string) => string;
+  getStatusIcon: (status: string) => React.ReactNode;
+}
+
+const ProposalCard: React.FC<ProposalCardProps> = memo(({ 
+  proposal, 
+  onEdit, 
+  onDuplicate, 
+  onDownload, 
+  onDelete, 
+  getStatusColor, 
+  getStatusIcon 
+}) => (
+  <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow group">
+    {/* Status Badge */}
+    <div className="flex items-center justify-between mb-3">
+      <div 
+        className="w-1 h-6 rounded-full"
+        style={{ backgroundColor: proposal.designSettings.primaryColor }}
+      />
+      <span className={`px-2 py-1 rounded text-xs font-medium flex items-center gap-1 ${getStatusColor(proposal.status)}`}>
+        {getStatusIcon(proposal.status)}
+        {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
+      </span>
+    </div>
+
+    {/* Proposal Header */}
+    <div className="mb-3">
+      <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2 text-sm">
+        {proposal.title}
+      </h3>
+      <div className="flex items-center gap-2 mb-2">
+        <Building size={12} className="text-gray-400" />
+        <div>
+          <p className="font-medium text-gray-900 text-xs">
+            {proposal.clientName}
+          </p>
+          <p className="text-xs text-gray-500 truncate">
+            {proposal.clientEmail}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    {/* Amount & Info */}
+    <div className="bg-gray-50 rounded-lg p-3 mb-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-lg font-bold text-gray-900">
+          {proposal.currency} {proposal.amount.toLocaleString()}
+        </span>
+        <div className="text-right">
+          <p className="text-xs text-gray-500">Due</p>
+          <p className="text-xs font-medium text-gray-700">{new Date(proposal.dueDate).toLocaleDateString()}</p>
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-gray-600">{proposal.templateName}</span>
+        {proposal.viewCount > 0 && (
+          <div className="flex items-center gap-1 text-xs text-gray-500">
+            <Eye size={10} />
+            {proposal.viewCount}
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Tags */}
+    {proposal.tags.length > 0 && (
+      <div className="mb-3">
+        <div className="flex flex-wrap gap-1">
+          {proposal.tags.slice(0, 2).map(tag => (
+            <span key={tag} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
+              {tag}
+            </span>
+          ))}
+          {proposal.tags.length > 2 && (
+            <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
+              +{proposal.tags.length - 2}
+            </span>
+          )}
+        </div>
+      </div>
+    )}
+
+    {/* Actions */}
+    <div className="flex items-center gap-1">
+      <button
+        onClick={() => onEdit(proposal)}
+        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-medium text-xs transition-colors flex items-center justify-center gap-1"
+      >
+        <Edit3 size={12} />
+        Edit
+      </button>
+      
+      <button
+        onClick={() => onDuplicate(proposal)}
+        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+        title="Duplicate"
+      >
+        <Copy size={12} />
+      </button>
+      
+      <button
+        onClick={() => onDownload(proposal)}
+        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+        title="Download PDF"
+      >
+        <Download size={12} />
+      </button>
+      
+      <button
+        onClick={() => onDelete(proposal.id)}
+        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+        title="Delete"
+      >
+        <Trash2 size={12} />
+      </button>
+    </div>
+  </div>
+));
+
+// A4 Template System
+const createTemplatesByTeam = () => {
+  const teams = ['UI/UX Team', 'Development Team', 'Performance Marketing', 'Video Production', 'Social Media', 'Testing / QA'];
+  
+  const templateData = [
+    {
+      name: 'Professional Clean',
+      description: 'Modern, clean design with professional layout',
+      category: 'Professional',
+      color: '#3B82F6',
+      fontFamily: 'inter' as const,
+      icon: Layout,
+      content: `
+        <div style="font-family: Inter, sans-serif; max-width: 210mm; margin: 0 auto; background: white;">
+          <div style="padding: 40px; min-height: 297mm;">
+            <div style="border-bottom: 3px solid #3B82F6; padding-bottom: 20px; margin-bottom: 40px;">
+              <h1 style="color: #1F2937; font-size: 36px; font-weight: 700; margin: 0;">{{clientName}}</h1>
+              <p style="color: #6B7280; font-size: 18px; margin: 8px 0 0 0;">{{title}}</p>
+            </div>
+            
+            <div style="margin-bottom: 40px;">
+              <h2 style="color: #3B82F6; font-size: 24px; font-weight: 600; margin-bottom: 20px;">Project Overview</h2>
+              <p style="color: #4B5563; line-height: 1.6; font-size: 16px;">
+                We are excited to present our comprehensive solution for {{serviceInterested}} services. 
+                Our team has carefully crafted this proposal to address your specific needs and deliver exceptional results.
+              </p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px;">
+              <div>
+                <h3 style="color: #1F2937; font-size: 20px; font-weight: 600; margin-bottom: 16px;">Client Information</h3>
+                <div style="background: #F9FAFB; padding: 20px; border-radius: 8px;">
+                  <p style="margin: 8px 0; color: #374151;"><strong>Company:</strong> {{clientName}}</p>
+                  <p style="margin: 8px 0; color: #374151;"><strong>Location:</strong> {{clientLocation}}</p>
+                  <p style="margin: 8px 0; color: #374151;"><strong>Website:</strong> {{website}}</p>
+                  <p style="margin: 8px 0; color: #374151;"><strong>Contact:</strong> {{contactNumber}}</p>
+                </div>
+              </div>
+              
+              <div>
+                <h3 style="color: #1F2937; font-size: 20px; font-weight: 600; margin-bottom: 16px;">Investment</h3>
+                <div style="background: #EFF6FF; padding: 20px; border-radius: 8px; border-left: 4px solid #3B82F6;">
+                  <p style="color: #3B82F6; font-size: 32px; font-weight: 700; margin: 0;">{{currency}} {{amount}}</p>
+                  <p style="color: #1F2937; margin: 8px 0 0 0;">Total Project Investment</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `
+    },
+    {
+      name: 'Creative Bold',
+      description: 'Bold, creative design with vibrant colors',
+      category: 'Creative',
+      color: '#8B5CF6',
+      fontFamily: 'poppins' as const,
+      icon: Sparkles,
+      content: `
+        <div style="font-family: Poppins, sans-serif; max-width: 210mm; margin: 0 auto; background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 100%);">
+          <div style="padding: 40px; min-height: 297mm; color: white;">
+            <div style="text-align: center; margin-bottom: 60px;">
+              <h1 style="font-size: 48px; font-weight: 800; margin: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">{{title}}</h1>
+              <div style="width: 80px; height: 4px; background: white; margin: 20px auto; border-radius: 2px;"></div>
+              <p style="font-size: 20px; opacity: 0.9; margin: 0;">Crafted for {{clientName}}</p>
+            </div>
+            
+            <div style="background: rgba(255,255,255,0.95); color: #1F2937; padding: 40px; border-radius: 16px; margin-bottom: 40px;">
+              <h2 style="color: #8B5CF6; font-size: 28px; font-weight: 700; margin-bottom: 24px;">Let's Create Something Amazing</h2>
+              <p style="line-height: 1.7; font-size: 16px; margin-bottom: 30px;">
+                We're thrilled to partner with {{clientName}} on this exciting {{serviceInterested}} project. 
+                Our creative approach combined with technical expertise will deliver results that exceed expectations.
+              </p>
+              
+              <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
+                <div style="flex: 1; min-width: 200px;">
+                  <h4 style="color: #8B5CF6; font-weight: 600; margin-bottom: 12px;">Project Details</h4>
+                  <p style="margin: 4px 0;"><strong>Service:</strong> {{serviceInterested}}</p>
+                  <p style="margin: 4px 0;"><strong>Location:</strong> {{clientLocation}}</p>
+                  <p style="margin: 4px 0;"><strong>Website:</strong> {{website}}</p>
+                </div>
+                
+                <div style="text-align: right;">
+                  <div style="background: #8B5CF6; color: white; padding: 20px; border-radius: 12px; display: inline-block;">
+                    <p style="font-size: 32px; font-weight: 800; margin: 0;">{{currency}} {{amount}}</p>
+                    <p style="margin: 8px 0 0 0; opacity: 0.9;">Total Investment</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `
+    }
+  ];
+
+  const allTemplates: ProposalTemplate[] = [];
+  teams.forEach(team => {
+    templateData.forEach((template, index) => {
+      allTemplates.push({
+        id: `${team.toLowerCase().replace(/[^a-z0-9]/g, '')}-${index + 1}`,
+        name: `${template.name} - ${team}`,
+        description: template.description,
+        team,
+        category: template.category,
+        thumbnail: '',
+        color: template.color,
+        fontFamily: template.fontFamily,
+        icon: template.icon,
+        content: template.content,
+        isPopular: index === 0 && team === 'UI/UX Team'
+      });
+    });
+  });
+  
+  return allTemplates;
+};
+
+// Memoized Modal Component for better performance
+const ProposalModal: React.FC<ProposalModalProps> = memo(({ isOpen, proposal, onClose, onSave, onDelete, templates }) => {
+  const [editedProposal, setEditedProposal] = useState<Proposal | null>(null);
+  const [activeTab, setActiveTab] = useState<'details' | 'template' | 'preview'>('details');
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>('All');
+
+  const allTemplates = useMemo(() => createTemplatesByTeam(), []);
+  const teams = ['All', 'UI/UX Team', 'Development Team', 'Performance Marketing', 'Video Production', 'Social Media', 'Testing / QA'];
+  
+  const filteredTemplates = useMemo(() => {
+    if (selectedTeamFilter === 'All') return allTemplates;
+    return allTemplates.filter(t => t.team === selectedTeamFilter);
+  }, [allTemplates, selectedTeamFilter]);
+
+  React.useEffect(() => {
+    if (proposal) {
+      setEditedProposal({ ...proposal });
+      setSelectedTemplate(proposal.templateId);
+    } else {
+      // New proposal with updated fields
+      const newProposal: Proposal = {
+        id: Date.now().toString(),
+        title: '',
+        clientName: '',
+        clientLocation: '',
+        serviceInterested: '',
+        website: '',
+        contactNumber: '',
+        amount: 0,
+        currency: 'USD',
+        status: 'draft',
+        createdDate: new Date().toISOString(),
+        lastModified: new Date().toISOString(),
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        templateId: '',
+        templateName: '',
+        templateTeam: '',
+        description: '',
+        tags: [],
+        viewCount: 0,
+        content: '',
+        designSettings: {
+          theme: 'modern',
+          primaryColor: '#3B82F6',
+          fontSize: 'medium',
+          fontFamily: 'inter',
+          spacing: 'normal'
+        }
+      };
+      setEditedProposal(newProposal);
+    }
+  }, [proposal]);
+
+  const handleSave = useCallback(() => {
+    if (editedProposal && selectedTemplate) {
+      const template = allTemplates.find(t => t.id === selectedTemplate);
+      const updatedProposal = {
+        ...editedProposal,
+        templateId: selectedTemplate,
+        templateName: template?.name || '',
+        templateTeam: template?.team || '',
+        lastModified: new Date().toISOString()
+      };
+      onSave(updatedProposal);
+      onClose();
+    }
+  }, [editedProposal, selectedTemplate, allTemplates, onSave, onClose]);
+
+  const handleDelete = useCallback(() => {
+    if (editedProposal && window.confirm('Are you sure you want to delete this proposal?')) {
+      onDelete(editedProposal.id);
+      onClose();
+    }
+  }, [editedProposal, onDelete, onClose]);
+
+  const generatePreview = useCallback(() => {
+    if (!editedProposal || !selectedTemplate) return '';
+    
+    const template = allTemplates.find(t => t.id === selectedTemplate);
+    if (!template) return '';
+    
+    let content = template.content;
+    content = content.replace(/\{\{clientName\}\}/g, editedProposal.clientName || 'Client Name');
+    content = content.replace(/\{\{title\}\}/g, editedProposal.title || 'Project Title');
+    content = content.replace(/\{\{clientLocation\}\}/g, editedProposal.clientLocation || 'Location');
+    content = content.replace(/\{\{serviceInterested\}\}/g, editedProposal.serviceInterested || 'Service');
+    content = content.replace(/\{\{website\}\}/g, editedProposal.website || 'website.com');
+    content = content.replace(/\{\{contactNumber\}\}/g, editedProposal.contactNumber || '+91 XXXXX XXXXX');
+    content = content.replace(/\{\{currency\}\}/g, editedProposal.currency);
+    content = content.replace(/\{\{amount\}\}/g, editedProposal.amount.toLocaleString());
+    
+    return content;
+  }, [editedProposal, selectedTemplate, allTemplates]);
+
+  if (!isOpen || !editedProposal) return null;
+
+  return (
+    <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-7xl max-h-[95vh] overflow-hidden">
+        {/* Modal Header */}
+        <div className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-50 rounded-lg">
+                <FileText size={20} className="text-blue-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {proposal ? 'Edit Proposal' : 'Create A4 Proposal'}
+                </h2>
+                <p className="text-sm text-gray-500">
+                  Professional proposal templates for each team
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                A4 Ready
+              </div>
+              <button
+                onClick={onClose}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Enhanced Tab Navigation */}
+        <div className="border-b border-gray-200 px-8 bg-gray-50">
+          <nav className="flex space-x-1">
+            {[
+              { id: 'details', label: 'Basic Info', icon: User, color: 'blue' },
+              { id: 'template', label: 'Templates', icon: Layout, color: 'purple' },
+              { id: 'design', label: 'Design', icon: Settings2, color: 'pink' },
+              { id: 'content', label: 'Content', icon: Type, color: 'green' },
+              { id: 'preview', label: 'Preview', icon: Eye, color: 'orange' }
+            ].map(tab => {
+              const IconComponent = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`py-4 px-6 border-b-3 font-poppins font-semibold text-sm transition-all duration-200 flex items-center gap-3 rounded-t-xl relative ${
+                    isActive
+                      ? `border-${tab.color}-500 text-${tab.color}-600 bg-white shadow-lg -mb-px`
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-white hover:bg-opacity-50'
+                  }`}
+                >
+                  <IconComponent size={18} />
+                  {tab.label}
+                  {isActive && (
+                    <div className={`absolute -bottom-0.5 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-${tab.color}-500 rounded-full`}></div>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Tab Content */}
+        <div className="p-6 overflow-y-auto max-h-96">
+          {activeTab === 'details' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-poppins font-medium text-gray-700 mb-2">
+                    Proposal Title
+                  </label>
+                  <input
+                    type="text"
+                    value={editedProposal.title}
+                    onChange={(e) => setEditedProposal(prev => prev ? { ...prev, title: e.target.value } : null)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm"
+                    placeholder="e.g., Website Redesign Proposal"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-poppins font-medium text-gray-700 mb-2">
+                    Client Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editedProposal.clientName}
+                    onChange={(e) => setEditedProposal(prev => prev ? { ...prev, clientName: e.target.value } : null)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm"
+                    placeholder="Client or Company Name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-poppins font-medium text-gray-700 mb-2">
+                    Client Email
+                  </label>
+                  <input
+                    type="email"
+                    value={editedProposal.clientEmail}
+                    onChange={(e) => setEditedProposal(prev => prev ? { ...prev, clientEmail: e.target.value } : null)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm"
+                    placeholder="client@company.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-poppins font-medium text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    value={editedProposal.description}
+                    onChange={(e) => setEditedProposal(prev => prev ? { ...prev, description: e.target.value } : null)}
+                    rows={4}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm resize-none"
+                    placeholder="Brief description of the proposal..."
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-poppins font-medium text-gray-700 mb-2">
+                    Proposal Amount
+                  </label>
+                  <div className="flex gap-2">
+                    <select
+                      value={editedProposal.currency}
+                      onChange={(e) => setEditedProposal(prev => prev ? { ...prev, currency: e.target.value } : null)}
+                      className="px-3 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white"
+                    >
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                      <option value="GBP">GBP</option>
+                    </select>
+                    <input
+                      type="number"
+                      value={editedProposal.amount}
+                      onChange={(e) => setEditedProposal(prev => prev ? { ...prev, amount: Number(e.target.value) } : null)}
+                      className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-poppins font-medium text-gray-700 mb-2">
+                    Due Date
+                  </label>
+                  <input
+                    type="date"
+                    value={editedProposal.dueDate}
+                    onChange={(e) => setEditedProposal(prev => prev ? { ...prev, dueDate: e.target.value } : null)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-poppins font-medium text-gray-700 mb-2">
+                    Status
+                  </label>
+                  <select
+                    value={editedProposal.status}
+                    onChange={(e) => setEditedProposal(prev => prev ? { ...prev, status: e.target.value as any } : null)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white"
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="sent">Sent</option>
+                    <option value="viewed">Viewed</option>
+                    <option value="accepted">Accepted</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="expired">Expired</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-poppins font-medium text-gray-700 mb-2">
+                    Tags
+                  </label>
+                  <input
+                    type="text"
+                    value={editedProposal.tags.join(', ')}
+                    onChange={(e) => setEditedProposal(prev => prev ? { ...prev, tags: e.target.value.split(',').map(tag => tag.trim()).filter(Boolean) } : null)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm"
+                    placeholder="web design, branding, marketing"
+                  />
+                  <p className="text-xs text-gray-500 font-poppins mt-1">Separate tags with commas</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'content' && (
+            <div>
+              <h3 className="text-lg font-poppins font-semibold text-gray-900 mb-4">Choose Template</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {templates.map(template => {
+                  const IconComponent = template.icon;
+                  return (
+                    <div
+                      key={template.id}
+                      onClick={() => setSelectedTemplate(template.id)}
+                      className={`p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 hover:shadow-md ${
+                        selectedTemplate === template.id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className={`w-10 h-10 ${template.color} rounded-lg flex items-center justify-center`}>
+                          <IconComponent size={20} className="text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-poppins font-semibold text-gray-900 text-sm">{template.name}</h4>
+                            {template.isPopular && (
+                              <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded-full text-xs font-poppins font-medium">
+                                Popular
+                              </span>
+                            )}
+                            {template.isPremium && (
+                              <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded-full text-xs font-poppins font-medium">
+                                Premium
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-600 font-poppins">{template.category}</p>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-600 font-poppins mb-3">{template.description}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {template.sections.slice(0, 3).map(section => (
+                          <span key={section} className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-poppins">
+                            {section}
+                          </span>
+                        ))}
+                        {template.sections.length > 3 && (
+                          <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-poppins">
+                            +{template.sections.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'preview' && (
+            <div className="bg-gray-50 rounded-xl p-8">
+              <div className="bg-white rounded-lg shadow-lg p-8 max-w-4xl mx-auto">
+                <div className="text-center mb-8">
+                  <h1 className="text-3xl font-poppins font-bold text-gray-900 mb-2">
+                    {editedProposal.title || 'Proposal Title'}
+                  </h1>
+                  <p className="text-gray-600 font-poppins">
+                    Prepared for {editedProposal.clientName || 'Client Name'}
+                  </p>
+                  <p className="text-sm text-gray-500 font-poppins mt-2">
+                    {new Date().toLocaleDateString()}
+                  </p>
+                </div>
+
+                <div className="border-t border-gray-200 pt-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                      <h3 className="font-poppins font-semibold text-gray-900 mb-4">Project Overview</h3>
+                      <p className="text-gray-600 font-poppins text-sm leading-relaxed">
+                        {editedProposal.description || 'Project description will appear here...'}
+                      </p>
+                    </div>
+                    <div>
+                      <h3 className="font-poppins font-semibold text-gray-900 mb-4">Investment</h3>
+                      <div className="bg-blue-50 p-4 rounded-lg">
+                        <p className="text-2xl font-poppins font-bold text-blue-600">
+                          {editedProposal.currency} {editedProposal.amount.toLocaleString()}
+                        </p>
+                        <p className="text-sm text-blue-600 font-poppins">Total Project Cost</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-200 pt-8 mt-8">
+                  <p className="text-center text-gray-500 font-poppins text-sm">
+                    This is a preview of your proposal. The full content will be generated based on your selected template.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Modal Footer */}
+        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {proposal && (
+              <button
+                onClick={handleDelete}
+                className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg font-poppins font-medium transition-colors duration-200"
+              >
+                Delete
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 font-poppins font-medium hover:bg-gray-50 transition-colors duration-200"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!editedProposal.title || !editedProposal.clientName || !selectedTemplate}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg font-poppins font-medium transition-colors duration-200"
+            >
+              {proposal ? 'Save Changes' : 'Create Proposal'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const ProposalsPage: React.FC = memo(() => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('All');
+  const [selectedTemplate, setSelectedTemplate] = useState('All');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showModal, setShowModal] = useState(false);
+  const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
+
+  const proposalTemplates: ProposalTemplate[] = [
+    {
+      id: '1',
+      name: 'Modern Business',
+      description: 'Clean, professional template perfect for corporate clients',
+      category: 'Business',
+      thumbnail: '/templates/modern-business.jpg',
+      color: 'bg-blue-500',
+      icon: Briefcase,
+      sections: ['Cover', 'About Us', 'Services', 'Timeline', 'Pricing', 'Terms'],
+      isPopular: true
+    },
+    {
+      id: '2',
+      name: 'Creative Agency',
+      description: 'Bold, colorful design for creative and design agencies',
+      category: 'Creative',
+      thumbnail: '/templates/creative-agency.jpg',
+      color: 'bg-purple-500',
+      icon: Settings2,
+      sections: ['Cover', 'Portfolio', 'Process', 'Team', 'Investment', 'Next Steps'],
+      isPopular: true
+    },
+    {
+      id: '3',
+      name: 'Tech Startup',
+      description: 'Modern, tech-focused template for software and SaaS companies',
+      category: 'Technology',
+      thumbnail: '/templates/tech-startup.jpg',
+      color: 'bg-green-500',
+      icon: Zap,
+      sections: ['Executive Summary', 'Solution', 'Technology', 'Roadmap', 'Pricing', 'Support']
+    },
+    {
+      id: '4',
+      name: 'Marketing Pro',
+      description: 'Results-driven template for marketing and advertising proposals',
+      category: 'Marketing',
+      thumbnail: '/templates/marketing-pro.jpg',
+      color: 'bg-orange-500',
+      icon: Target,
+      sections: ['Strategy', 'Channels', 'Campaign', 'Metrics', 'Budget', 'Timeline']
+    },
+    {
+      id: '5',
+      name: 'Web Development',
+      description: 'Technical template for web development and digital projects',
+      category: 'Development',
+      thumbnail: '/templates/web-dev.jpg',
+      color: 'bg-indigo-500',
+      icon: Code,
+      sections: ['Project Scope', 'Technology Stack', 'Features', 'Timeline', 'Cost', 'Maintenance']
+    },
+    {
+      id: '6',
+      name: 'Consulting Elite',
+      description: 'Professional template for consulting and advisory services',
+      category: 'Consulting',
+      thumbnail: '/templates/consulting.jpg',
+      color: 'bg-gray-600',
+      icon: TrendingUp,
+      sections: ['Challenge', 'Approach', 'Methodology', 'Deliverables', 'Investment', 'ROI'],
+      isPremium: true
+    }
+  ];
+
+  const proposals: Proposal[] = [
+    {
+      id: '1',
+      title: 'E-commerce Website Redesign',
+      clientName: 'TechMart Solutions',
+      clientEmail: 'contact@techmart.com',
+      amount: 25000,
+      currency: 'USD',
+      status: 'sent',
+      createdDate: '2024-02-10',
+      lastModified: '2024-02-12',
+      dueDate: '2024-03-15',
+      templateId: '1',
+      templateName: 'Modern Business',
+      description: 'Complete redesign of e-commerce platform with modern UI/UX and enhanced functionality',
+      tags: ['web design', 'e-commerce', 'ui/ux'],
+      viewCount: 8,
+      lastViewed: '2024-02-14',
+      sections: [],
+      pages: [],
+      designSettings: {
+        theme: 'modern',
+        primaryColor: '#3B82F6',
+        fontSize: 'medium',
+        spacing: 'normal',
+        layout: 'single-column'
+      }
+    },
+    {
+      id: '2',
+      title: 'Brand Identity Package',
+      clientName: 'StartupXYZ',
+      clientEmail: 'hello@startupxyz.com',
+      amount: 15000,
+      currency: 'USD',
+      status: 'viewed',
+      createdDate: '2024-02-08',
+      lastModified: '2024-02-10',
+      dueDate: '2024-03-10',
+      templateId: '2',
+      templateName: 'Creative Agency',
+      description: 'Complete brand identity design including logo, guidelines, and marketing materials',
+      tags: ['branding', 'logo design', 'identity'],
+      viewCount: 12,
+      lastViewed: '2024-02-13',
+      sections: [],
+      pages: [],
+      designSettings: {
+        theme: 'creative',
+        primaryColor: '#8B5CF6',
+        fontSize: 'medium',
+        spacing: 'normal',
+        layout: 'single-column'
+      }
+    },
+    {
+      id: '3',
+      title: 'Mobile App Development',
+      clientName: 'FinTech Innovations',
+      clientEmail: 'dev@fintech.com',
+      amount: 45000,
+      currency: 'USD',
+      status: 'accepted',
+      createdDate: '2024-02-05',
+      lastModified: '2024-02-08',
+      dueDate: '2024-04-01',
+      templateId: '3',
+      templateName: 'Tech Startup',
+      description: 'Native mobile application for iOS and Android with advanced financial features',
+      tags: ['mobile app', 'fintech', 'development'],
+      viewCount: 15,
+      lastViewed: '2024-02-11',
+      sections: [],
+      pages: [],
+      designSettings: {
+        theme: 'modern',
+        primaryColor: '#10B981',
+        fontSize: 'medium',
+        spacing: 'normal',
+        layout: 'single-column'
+      }
+    },
+    {
+      id: '4',
+      title: 'Digital Marketing Campaign',
+      clientName: 'Local Restaurant Group',
+      clientEmail: 'marketing@restaurants.com',
+      amount: 8500,
+      currency: 'USD',
+      status: 'draft',
+      createdDate: '2024-02-12',
+      lastModified: '2024-02-14',
+      dueDate: '2024-03-01',
+      templateId: '4',
+      templateName: 'Marketing Pro',
+      description: '3-month digital marketing campaign across social media and Google Ads',
+      tags: ['digital marketing', 'social media', 'advertising'],
+      viewCount: 0,
+      sections: [],
+      pages: [],
+      designSettings: {
+        theme: 'creative',
+        primaryColor: '#F59E0B',
+        fontSize: 'medium',
+        spacing: 'normal',
+        layout: 'single-column'
+      }
+    },
+    {
+      id: '5',
+      title: 'Enterprise Software Solution',
+      clientName: 'Manufacturing Corp',
+      clientEmail: 'it@manufacturing.com',
+      amount: 75000,
+      currency: 'USD',
+      status: 'sent',
+      createdDate: '2024-02-01',
+      lastModified: '2024-02-03',
+      dueDate: '2024-03-30',
+      templateId: '5',
+      templateName: 'Web Development',
+      description: 'Custom enterprise software solution for inventory and production management',
+      tags: ['enterprise', 'software', 'manufacturing'],
+      viewCount: 6,
+      lastViewed: '2024-02-09',
+      sections: [],
+      pages: [],
+      designSettings: {
+        theme: 'corporate',
+        primaryColor: '#6366F1',
+        fontSize: 'medium',
+        spacing: 'normal',
+        layout: 'single-column'
+      }
+    },
+    {
+      id: '6',
+      title: 'Business Strategy Consulting',
+      clientName: 'Growth Ventures',
+      clientEmail: 'strategy@growth.com',
+      amount: 35000,
+      currency: 'USD',
+      status: 'rejected',
+      createdDate: '2024-01-28',
+      lastModified: '2024-01-30',
+      dueDate: '2024-02-28',
+      templateId: '6',
+      templateName: 'Consulting Elite',
+      description: '6-month strategic consulting engagement for market expansion',
+      tags: ['consulting', 'strategy', 'growth'],
+      viewCount: 4,
+      lastViewed: '2024-02-05',
+      sections: [],
+      pages: [],
+      designSettings: {
+        theme: 'elegant',
+        primaryColor: '#4B5563',
+        fontSize: 'medium',
+        spacing: 'normal',
+        layout: 'single-column'
+      }
+    }
+  ];
+
+  const statuses = ['All', 'Draft', 'Sent', 'Viewed', 'Accepted', 'Rejected', 'Expired'];
+  const templateNames = ['All', ...Array.from(new Set(proposalTemplates.map(t => t.name)))];
+
+  const filteredProposals = proposals.filter(proposal => {
+    const matchesSearch = proposal.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         proposal.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         proposal.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = selectedStatus === 'All' || proposal.status.toLowerCase() === selectedStatus.toLowerCase();
+    const matchesTemplate = selectedTemplate === 'All' || proposal.templateName === selectedTemplate;
+    
+    return matchesSearch && matchesStatus && matchesTemplate;
+  });
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'draft': return 'bg-gray-100 text-gray-700';
+      case 'sent': return 'bg-blue-100 text-blue-700';
+      case 'viewed': return 'bg-yellow-100 text-yellow-700';
+      case 'accepted': return 'bg-green-100 text-green-700';
+      case 'rejected': return 'bg-red-100 text-red-700';
+      case 'expired': return 'bg-orange-100 text-orange-700';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'draft': return <Edit3 size={14} />;
+      case 'sent': return <Send size={14} />;
+      case 'viewed': return <Eye size={14} />;
+      case 'accepted': return <CheckCircle size={14} />;
+      case 'rejected': return <AlertCircle size={14} />;
+      case 'expired': return <Clock size={14} />;
+      default: return <FileText size={14} />;
+    }
+  };
+
+  const handleCreateProposal = () => {
+    setSelectedProposal(null);
+    setShowModal(true);
+  };
+
+  const handleEditProposal = (proposal: Proposal) => {
+    setSelectedProposal(proposal);
+    setShowModal(true);
+  };
+
+  const handleDuplicateProposal = (proposal: Proposal) => {
+    const duplicatedProposal = {
+      ...proposal,
+      id: Date.now().toString(),
+      title: `${proposal.title} (Copy)`,
+      status: 'draft' as const,
+      createdDate: new Date().toISOString(),
+      lastModified: new Date().toISOString(),
+      viewCount: 0,
+      lastViewed: undefined
+    };
+    console.log('Duplicate proposal:', duplicatedProposal);
+  };
+
+  const handleDeleteProposal = (proposalId: string) => {
+    if (window.confirm('Are you sure you want to delete this proposal?')) {
+      console.log('Delete proposal:', proposalId);
+    }
+  };
+
+  const handleDownloadProposal = (proposal: Proposal) => {
+    // Generate PDF content based on proposal design settings
+    const pdfContent = generateProposalPDF(proposal);
+    
+    // Create and download PDF
+    const element = document.createElement('a');
+    const file = new Blob([pdfContent], { type: 'application/pdf' });
+    element.href = URL.createObjectURL(file);
+    element.download = `${proposal.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_proposal.pdf`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  };
+
+  const generateProposalPDF = (proposal: Proposal) => {
+    // This is a simplified PDF generation - in a real app you'd use libraries like jsPDF or react-pdf
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${proposal.title}</title>
+          <style>
+            body { 
+              font-family: 'Arial', sans-serif; 
+              margin: 40px; 
+              color: #333;
+              background: white;
+            }
+            .header { 
+              text-align: center; 
+              border-bottom: 3px solid ${proposal.designSettings.primaryColor}; 
+              padding-bottom: 20px; 
+              margin-bottom: 30px;
+            }
+            .title { 
+              font-size: 28px; 
+              font-weight: bold; 
+              color: ${proposal.designSettings.primaryColor}; 
+              margin-bottom: 10px;
+            }
+            .client-info { 
+              background: #f8f9fa; 
+              padding: 20px; 
+              border-radius: 8px; 
+              margin: 20px 0;
+            }
+            .amount { 
+              font-size: 24px; 
+              font-weight: bold; 
+              color: ${proposal.designSettings.primaryColor}; 
+              text-align: center; 
+              padding: 20px; 
+              background: #f8f9fa; 
+              border-radius: 8px; 
+              margin: 20px 0;
+            }
+            .footer { 
+              margin-top: 40px; 
+              text-align: center; 
+              color: #666; 
+              font-size: 12px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="title">${proposal.title}</div>
+            <p>Proposal for ${proposal.clientName}</p>
+          </div>
+          
+          <div class="client-info">
+            <h3>Client Information</h3>
+            <p><strong>Company:</strong> ${proposal.clientName}</p>
+            <p><strong>Email:</strong> ${proposal.clientEmail}</p>
+            <p><strong>Due Date:</strong> ${new Date(proposal.dueDate).toLocaleDateString()}</p>
+          </div>
+          
+          <div class="amount">
+            Total Investment: ${proposal.currency} ${proposal.amount.toLocaleString()}
+          </div>
+          
+          <div style="margin: 30px 0;">
+            <h3>Project Description</h3>
+            <p>${proposal.description}</p>
+          </div>
+          
+          <div class="footer">
+            <p>Generated on ${new Date().toLocaleDateString()} | Template: ${proposal.templateName}</p>
+          </div>
+        </body>
+      </html>
+    `;
+    
+    return htmlContent;
+  };
+
+  const handleSaveProposal = (proposal: Proposal) => {
+    console.log('Save proposal:', proposal);
+  };
+
+  const totalValue = filteredProposals.reduce((sum, proposal) => sum + proposal.amount, 0);
+  const acceptedValue = filteredProposals.filter(p => p.status === 'accepted').reduce((sum, proposal) => sum + proposal.amount, 0);
+
+  return (
+    <div className="bg-white min-h-screen">
+      {/* Minimal Summary Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 px-4 pt-4">
+        <div className="bg-white border border-gray-200 p-4 rounded-lg hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-blue-50 rounded-lg">
+              <FileText size={16} className="text-blue-600" />
+            </div>
+            <span className="text-2xl font-semibold text-gray-900">{filteredProposals.length}</span>
+          </div>
+          <p className="text-sm font-medium text-gray-700">Total Proposals</p>
+          <p className="text-xs text-gray-500">${totalValue.toLocaleString()}</p>
+        </div>
+
+        <div className="bg-white border border-gray-200 p-4 rounded-lg hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-green-50 rounded-lg">
+              <CheckCircle size={16} className="text-green-600" />
+            </div>
+            <span className="text-2xl font-semibold text-gray-900">{filteredProposals.filter(p => p.status === 'accepted').length}</span>
+          </div>
+          <p className="text-sm font-medium text-gray-700">Accepted</p>
+          <p className="text-xs text-gray-500">${acceptedValue.toLocaleString()}</p>
+        </div>
+
+        <div className="bg-white border border-gray-200 p-4 rounded-lg hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-orange-50 rounded-lg">
+              <Clock size={16} className="text-orange-600" />
+            </div>
+            <span className="text-2xl font-semibold text-gray-900">{filteredProposals.filter(p => p.status === 'sent' || p.status === 'viewed').length}</span>
+          </div>
+          <p className="text-sm font-medium text-gray-700">Pending</p>
+          <p className="text-xs text-gray-500">Awaiting response</p>
+        </div>
+
+        <div className="bg-white border border-gray-200 p-4 rounded-lg hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-purple-50 rounded-lg">
+              <TrendingUp size={16} className="text-purple-600" />
+            </div>
+            <span className="text-2xl font-semibold text-gray-900">{filteredProposals.length > 0 ? Math.round((filteredProposals.filter(p => p.status === 'accepted').length / filteredProposals.length) * 100) : 0}%</span>
+          </div>
+          <p className="text-sm font-medium text-gray-700">Win Rate</p>
+          <p className="text-xs text-gray-500">Success rate</p>
+        </div>
+      </div>
+
+      {/* Minimal Action Bar */}
+      <div className="bg-white mx-4 p-4 rounded-lg border border-gray-200 mb-4 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 flex-1">
+            {/* Compact Search */}
+            <div className="relative flex-1 max-w-sm">
+              <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search proposals..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+            </div>
+
+            {/* Compact Filters */}
+            <div className="flex gap-2">
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white min-w-32"
+              >
+                {statuses.map(status => (
+                  <option key={status} value={status}>{status === 'All' ? 'All Status' : status}</option>
+                ))}
+              </select>
+
+              <select
+                value={selectedTemplate}
+                onChange={(e) => setSelectedTemplate(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white min-w-36"
+              >
+                {templateNames.map(template => (
+                  <option key={template} value={template}>{template === 'All' ? 'All Templates' : template}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Compact Action Buttons */}
+          <div className="flex items-center gap-2">
+            <div className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded text-xs">
+              {filteredProposals.length} proposal{filteredProposals.length !== 1 ? 's' : ''}
+            </div>
+            
+            <button
+              onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors flex items-center gap-1 text-sm"
+            >
+              <Layout size={14} />
+              {viewMode === 'grid' ? 'List' : 'Grid'}
+            </button>
+            
+            <button
+              onClick={handleCreateProposal}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 text-sm"
+            >
+              <Plus size={14} />
+              New Proposal
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Minimal Proposals Display */}
+      {viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 px-4 pb-4">
+          {filteredProposals.map((proposal) => (
+            <ProposalCard 
+              key={proposal.id}
+              proposal={proposal}
+              onEdit={handleEditProposal}
+              onDuplicate={handleDuplicateProposal}
+              onDownload={handleDownloadProposal}
+              onDelete={handleDeleteProposal}
+              getStatusColor={getStatusColor}
+              getStatusIcon={getStatusIcon}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm mx-4">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-900 text-sm">Proposal</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-900 text-sm">Client</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-900 text-sm">Amount</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-900 text-sm">Status</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-900 text-sm">Template</th>
+                  <th className="text-left px-4 py-3 font-semibold text-gray-900 text-sm">Due Date</th>
+                  <th className="text-right px-4 py-3 font-semibold text-gray-900 text-sm">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredProposals.map((proposal) => (
+                  <tr key={proposal.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3">
+                      <div>
+                        <p className="font-medium text-gray-900 text-sm">{proposal.title}</p>
+                        <p className="text-xs text-gray-500 line-clamp-1">{proposal.description}</p>
+                        {proposal.viewCount > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            {proposal.viewCount} views
+                          </p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div>
+                        <p className="font-medium text-gray-900 text-sm">{proposal.clientName}</p>
+                        <p className="text-xs text-gray-500">{proposal.clientEmail}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="font-semibold text-gray-900 text-sm">
+                        {proposal.currency} {proposal.amount.toLocaleString()}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded text-xs font-medium flex items-center gap-1 w-fit ${getStatusColor(proposal.status)}`}>
+                        {getStatusIcon(proposal.status)}
+                        {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="text-gray-900 text-sm">{proposal.templateName}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="text-gray-900 text-sm">
+                        {new Date(proposal.dueDate).toLocaleDateString()}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => handleEditProposal(proposal)}
+                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          title="Edit"
+                        >
+                          <Edit3 size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDuplicateProposal(proposal)}
+                          className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                          title="Duplicate"
+                        >
+                          <Copy size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDownloadProposal(proposal)}
+                          className="p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                          title="Download"
+                        >
+                          <Download size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteProposal(proposal.id)}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {filteredProposals.length === 0 && (
+        <div className="text-center py-12">
+          <FileText size={48} className="text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-poppins font-medium text-gray-900 mb-2">
+            No proposals found
+          </h3>
+          <p className="text-gray-600 font-poppins mb-6">
+            {searchQuery || selectedStatus !== 'All' || selectedTemplate !== 'All'
+              ? 'Try adjusting your search criteria or filters.'
+              : 'Create your first proposal to get started with professional client presentations.'
+            }
+          </p>
+          {!searchQuery && selectedStatus === 'All' && selectedTemplate === 'All' && (
+            <button
+              onClick={handleCreateProposal}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-poppins font-medium transition-colors duration-200 flex items-center gap-2 mx-auto"
+            >
+              <Plus size={20} />
+              Create First Proposal
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Proposal Modal */}
+      <ProposalModal
+        isOpen={showModal}
+        proposal={selectedProposal}
+        onClose={() => {
+          setShowModal(false);
+          setSelectedProposal(null);
+        }}
+        onSave={handleSaveProposal}
+        onDelete={handleDeleteProposal}
+        templates={proposalTemplates}
+      />
+    </div>
+  );
+});
+
+export default ProposalsPage;
