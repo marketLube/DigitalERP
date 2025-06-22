@@ -19,7 +19,11 @@ const SidebarFlyout: React.FC<SidebarFlyoutProps> = ({
   const handleRouteClick = (route: SubRoute) => {
     if (onNavigate) {
       // Dashboard routes
-      if (route.href.startsWith('/dashboard/')) {
+      if (route.href === '/dashboard/overview') {
+        onNavigate('dashboard');
+      } else if (route.href === '/dashboard/smart-recommendations') {
+        onNavigate('dashboard-smart-recommendations');
+      } else if (route.href.startsWith('/dashboard/')) {
         onNavigate('dashboard');
       }
       
@@ -104,16 +108,7 @@ const SidebarFlyout: React.FC<SidebarFlyoutProps> = ({
         onNavigate('reports-export');
       }
       
-      // Smart Recommendations routes
-      else if (route.href === '/smart-recommendations/insights') {
-        onNavigate('smart-recommendations-insights');
-      } else if (route.href === '/smart-recommendations/actions') {
-        onNavigate('smart-recommendations-actions');
-      } else if (route.href === '/smart-recommendations/alerts') {
-        onNavigate('smart-recommendations-alerts');
-      } else if (route.href === '/smart-recommendations/optimization') {
-        onNavigate('smart-recommendations-optimization');
-      }
+
       
       // Settings routes
       else if (route.href === '/settings/general') {

@@ -6,6 +6,11 @@ import {
   Brain, ChevronRight, Eye, Filter, Download, Lightbulb, TrendingDown,
   PieChart, LineChart, Building, Shield, Star, Heart, Coffee, BookOpen
 } from 'lucide-react';
+import SmartRecommendationsPage from '../SmartRecommendations/SmartRecommendationsPage';
+
+interface DashboardContentProps {
+  defaultTab?: 'overview' | 'smart-recommendations' | 'team-progress' | 'revenue' | 'quick-stats';
+}
 
 // Mock data for comprehensive ERP analytics
 const mockERPData = {
@@ -189,9 +194,18 @@ const generateSmartRecommendations = () => {
   return recommendations.slice(0, 6); // Show top 6 recommendations
 };
 
-const DashboardContent: React.FC = () => {
+const DashboardContent: React.FC<DashboardContentProps> = ({ defaultTab = 'overview' }) => {
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'month' | 'quarter'>('month');
   const [showRecommendations, setShowRecommendations] = useState(true);
+
+  React.useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
+
+  if (activeTab === 'smart-recommendations') {
+    return <SmartRecommendationsPage />;
+  }
   
   const smartRecommendations = useMemo(() => generateSmartRecommendations(), []);
   
@@ -313,12 +327,21 @@ const DashboardContent: React.FC = () => {
                 Smart Recommendations
               </h2>
             </div>
-            <button
-              onClick={() => setShowRecommendations(false)}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              ×
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActiveTab('smart-recommendations')}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors font-poppins"
+              >
+                View All
+                <ChevronRight size={16} />
+              </button>
+              <button
+                onClick={() => setShowRecommendations(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                ×
+              </button>
+            </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -3084,12 +3084,58 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
   }
 
   return (
-    <div className="p-4 min-h-screen bg-gray-50">
+    <div className="px-4 pt-2 pb-4 min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-4">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex items-center gap-8">
             <h1 className="text-2xl font-bold text-gray-900 font-poppins">Task Board</h1>
+            
+            {/* Task Statistics in Header */}
+            {(activeTab === 'tasks' || activeTab === 'my-tasks') && (
+              <div className="flex items-center gap-6">
+                {/* Total Tasks */}
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <LayoutGrid size={16} className="text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="font-poppins font-semibold text-gray-900 text-sm">
+                      {displayTasks.length}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {activeTab === 'my-tasks' ? 'My Tasks' : 'Total Tasks'}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Top 3 Status Counts */}
+                {Object.entries(statusCounts).slice(0, 3).map(([status, count]: [string, number]) => (
+                  <div key={status} className="flex items-center gap-2">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      status === 'Pending Tasks' ? 'bg-yellow-100' :
+                      status === 'Completed Tasks' ? 'bg-green-100' :
+                      status === 'Overdue' ? 'bg-red-100' :
+                      'bg-blue-100'
+                    }`}>
+                      {status === 'Pending Tasks' ? (
+                        <Clock size={16} className="text-yellow-600" />
+                      ) : status === 'Completed Tasks' ? (
+                        <CheckCircle size={16} className="text-green-600" />
+                      ) : status === 'Overdue' ? (
+                        <XCircle size={16} className="text-red-600" />
+                      ) : (
+                        <Minus size={16} className="text-blue-600" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="font-poppins font-semibold text-gray-900 text-sm">{count}</div>
+                      <div className="text-xs text-gray-500">{status}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           
           {/* Tab Navigation */}
@@ -3169,57 +3215,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
           </div>
         </div>
 
-        {/* Dynamic Task Status Counts */}
-        {(activeTab === 'tasks' || activeTab === 'my-tasks') && (
-          <div className="mt-4 bg-white p-4 rounded-xl border border-gray-200">
-            <div className="flex items-center gap-6 flex-wrap">
-              {/* Total Tasks */}
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <LayoutGrid size={16} className="text-blue-600" />
-                </div>
-                <div>
-                  <div className="font-poppins font-semibold text-gray-900">
-                    {displayTasks.length}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {activeTab === 'my-tasks' ? 'My Tasks' : 'Total Tasks'}
-                  </div>
-                </div>
-              </div>
 
-              {/* Dynamic Status Counts - Ordered: Pending, Sub-statuses, Completed, Overdue */}
-              {Object.entries(statusCounts).map(([status, count]: [string, number]) => (
-                <div key={status} className="flex items-center gap-2">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    status === 'Pending Tasks' ? 'bg-yellow-100' :
-                    status === 'Completed Tasks' ? 'bg-green-100' :
-                    status === 'Overdue' ? 'bg-red-100' :
-                    'bg-blue-100'
-                  }`}>
-                    {status === 'Pending Tasks' ? (
-                      <Clock size={16} className="text-yellow-600" />
-                    ) : status === 'Completed Tasks' ? (
-                      <CheckCircle size={16} className="text-green-600" />
-                    ) : status === 'Overdue' ? (
-                      <XCircle size={16} className="text-red-600" />
-                    ) : (
-                      <Minus size={16} className="text-blue-600" />
-                    )}
-                  </div>
-                  <div>
-                    <div className="font-poppins font-semibold text-gray-900">
-                      {count}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {status}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Filter Bar - Show for tasks and my-tasks */}
