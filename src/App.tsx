@@ -21,6 +21,7 @@ import ReportsDashboard from './components/Reports/ReportsDashboard';
 import TaskReportsPage from './components/Reports/TaskReportsPage';
 import TeamReportsPage from './components/Reports/TeamReportsPage';
 import ExportPage from './components/Reports/ExportPage';
+import SmartRecommendationsPage from './components/SmartRecommendations/SmartRecommendationsPage';
 import TestDesigns from './components/Test/TestDesigns';
 
 type PageType = 
@@ -30,6 +31,7 @@ type PageType =
   | 'hr-dashboard' | 'hr-directory' | 'hr-attendance' | 'hr-leave' | 'hr-recruitment' | 'hr-performance' | 'hr-payroll' | 'hr-documents' | 'hr-reports' | 'hr-employee-hub' | 'hr-settings'
   | 'accounting-dashboard' | 'accounting-daybook' | 'accounting-invoices' | 'accounting-tax' | 'accounting-profit-loss' | 'accounting-settings'
   | 'reports-dashboard' | 'reports-tasks' | 'reports-team' | 'reports-export'
+  | 'smart-recommendations-insights' | 'smart-recommendations-actions' | 'smart-recommendations-alerts' | 'smart-recommendations-optimization'
   | 'settings-general' | 'settings-teams' | 'settings-roles' | 'settings-integrations'
   | 'team-overview' | 'status-management'
   | 'test-compact' | 'test-minimal' | 'test-animated';
@@ -145,6 +147,16 @@ function App() {
         return <TeamReportsPage onBack={() => navigateToPage('reports-dashboard')} />;
       case 'reports-export':
         return <ExportPage onBack={() => navigateToPage('reports-dashboard')} />;
+
+      // Smart Recommendations
+      case 'smart-recommendations-insights':
+        return <SmartRecommendationsPage initialTab="insights" />;
+      case 'smart-recommendations-actions':
+        return <SmartRecommendationsPage initialTab="actions" />;
+      case 'smart-recommendations-alerts':
+        return <SmartRecommendationsPage initialTab="alerts" />;
+      case 'smart-recommendations-optimization':
+        return <SmartRecommendationsPage initialTab="optimization" />;
 
       // Settings
       case 'settings-general':

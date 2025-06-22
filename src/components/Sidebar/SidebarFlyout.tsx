@@ -104,6 +104,17 @@ const SidebarFlyout: React.FC<SidebarFlyoutProps> = ({
         onNavigate('reports-export');
       }
       
+      // Smart Recommendations routes
+      else if (route.href === '/smart-recommendations/insights') {
+        onNavigate('smart-recommendations-insights');
+      } else if (route.href === '/smart-recommendations/actions') {
+        onNavigate('smart-recommendations-actions');
+      } else if (route.href === '/smart-recommendations/alerts') {
+        onNavigate('smart-recommendations-alerts');
+      } else if (route.href === '/smart-recommendations/optimization') {
+        onNavigate('smart-recommendations-optimization');
+      }
+      
       // Settings routes
       else if (route.href === '/settings/general') {
         onNavigate('settings-general');

@@ -80,6 +80,17 @@ export const sidebarModules: SidebarModule[] = [
     ]
   },
   {
+    id: 'smart-recommendations',
+    name: 'Smart Recommendations',
+    icon: 'Brain',
+    subRoutes: [
+      { name: 'AI Insights', href: '/smart-recommendations/insights' },
+      { name: 'Action Items', href: '/smart-recommendations/actions' },
+      { name: 'Performance Alerts', href: '/smart-recommendations/alerts' },
+      { name: 'Optimization Tips', href: '/smart-recommendations/optimization' }
+    ]
+  },
+  {
     id: 'settings',
     name: 'Settings',
     icon: 'Settings',
