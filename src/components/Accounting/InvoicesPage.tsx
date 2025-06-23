@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { FileText, Search, Filter, Plus, Download, Eye, Edit3, Trash2, Send, DollarSign, Calendar, Clock, CheckCircle, AlertCircle, Copy } from 'lucide-react';
+import { FileText, Search, Filter, Plus, Download, Eye, Edit3, Trash2, Send, DollarSign, Calendar, Clock, CheckCircle, AlertCircle, Copy, ChevronDown, LayoutGrid, List, ToggleLeft, ToggleRight, DollarSign as Currency, X, ArrowLeft, ArrowRight } from 'lucide-react';
+import DateRangePicker, { DateRange } from '../Common/DateRangePicker';
+
 
 interface Invoice {
   id: string;
@@ -26,14 +28,27 @@ interface InvoiceItem {
 
 interface InvoicesPageProps {
   onBack: () => void;
+  showHeader?: boolean;
+  onNavigate?: (page: string) => void;
 }
 
-const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack }) => {
+const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack, showHeader = true, onNavigate }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('All');
+  const [selectedClient, setSelectedClient] = useState('All Clients');
+  const [selectedAmountRange, setSelectedAmountRange] = useState('All Amounts');
+  const [dateRange, setDateRange] = useState<DateRange>({
+    startDate: '2024-01-01',
+    endDate: '2024-12-31',
+    preset: 'all'
+  });
+  const [showOverdue, setShowOverdue] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  
+  // Create Invoice State
+  const [showCreateInvoice, setShowCreateInvoice] = useState(false);
 
   const invoices: Invoice[] = [
     {
@@ -122,14 +137,46 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack }) => {
   ];
 
   const statuses = ['All', 'Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled'];
+  const clients = ['All Clients', ...Array.from(new Set(invoices.map(inv => inv.clientName)))];
+  const amountRanges = [
+    'All Amounts',
+    'Under $5,000',
+    '$5,000 - $10,000', 
+    '$10,000 - $20,000',
+    'Over $20,000'
+  ];
 
   const filteredInvoices = invoices.filter(invoice => {
     const matchesSearch = invoice.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          invoice.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         invoice.clientEmail.toLowerCase().includes(searchQuery.toLowerCase());
+                         invoice.clientEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         invoice.amount.toString().includes(searchQuery) ||
+                         invoice.notes.toLowerCase().includes(searchQuery.toLowerCase());
+    
     const matchesStatus = selectedStatus === 'All' || invoice.status.toLowerCase() === selectedStatus.toLowerCase();
     
-    return matchesSearch && matchesStatus;
+    const matchesClient = selectedClient === 'All Clients' || invoice.clientName === selectedClient;
+    
+    const matchesAmountRange = (() => {
+      if (selectedAmountRange === 'All Amounts') return true;
+      if (selectedAmountRange === 'Under $5,000') return invoice.amount < 5000;
+      if (selectedAmountRange === '$5,000 - $10,000') return invoice.amount >= 5000 && invoice.amount <= 10000;
+      if (selectedAmountRange === '$10,000 - $20,000') return invoice.amount >= 10000 && invoice.amount <= 20000;
+      if (selectedAmountRange === 'Over $20,000') return invoice.amount > 20000;
+      return true;
+    })();
+
+    const matchesDateRange = (() => {
+      if (dateRange.preset === 'all') return true;
+      const invoiceDate = new Date(invoice.issueDate);
+      const startDate = new Date(dateRange.startDate);
+      const endDate = new Date(dateRange.endDate);
+      return invoiceDate >= startDate && invoiceDate <= endDate;
+    })();
+
+    const matchesOverdue = showOverdue ? invoice.status === 'overdue' : true;
+    
+    return matchesSearch && matchesStatus && matchesClient && matchesAmountRange && matchesDateRange && matchesOverdue;
   });
 
   const getStatusColor = (status: string) => {
@@ -177,35 +224,38 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack }) => {
     console.log('Send invoice:', invoiceId);
   };
 
+  const handleCreateInvoice = () => {
+    if (onNavigate) {
+      onNavigate('invoice-create');
+    } else {
+      setShowCreateInvoice(true);
+    }
+  };
+
   return (
-    <div className="p-6 animate-fadeIn">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-poppins font-semibold text-gray-900 mb-2">
-              Invoices
-            </h1>
-            <p className="text-gray-600 font-poppins">
-              Create, manage, and track your invoices and payments
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-              className="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 font-poppins font-medium hover:bg-gray-50 transition-colors duration-200"
-            >
-              {viewMode === 'grid' ? 'List View' : 'Grid View'}
-            </button>
+    <div className={showHeader ? "p-6 animate-fadeIn" : "animate-fadeIn"}>
+      {/* Header - Only show when showHeader is true */}
+      {showHeader && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-poppins font-semibold text-gray-900 mb-2">
+                Invoices
+              </h1>
+              <p className="text-gray-600 font-poppins">
+                Create, manage, and track your invoices and payments
+              </p>
+            </div>
             
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-poppins font-medium transition-colors duration-200 flex items-center gap-2">
-              <Plus size={16} />
-              Create Invoice
-            </button>
+            <div className="flex items-center gap-3">
+              <button className="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 font-poppins font-medium hover:bg-gray-50 transition-colors duration-200 flex items-center gap-2">
+                <Download size={16} />
+                Export All
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
@@ -262,34 +312,131 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack }) => {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Enhanced Filter Bar */}
       <div className="bg-white p-4 rounded-xl border border-gray-200 mb-6">
         <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-          {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search invoices..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm"
+          {/* Left side filters */}
+          <div className="flex flex-col sm:flex-row gap-3 flex-1">
+            {/* Client Dropdown */}
+            <div className="relative">
+              <select
+                value={selectedClient}
+                onChange={(e) => setSelectedClient(e.target.value)}
+                className="px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white appearance-none min-w-36"
+              >
+                {clients.map(client => (
+                  <option key={client} value={client}>{client}</option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            </div>
+
+            {/* Status Dropdown */}
+            <div className="relative">
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white appearance-none min-w-36"
+              >
+                {statuses.map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            </div>
+
+            {/* Amount Range Filter */}
+            <div className="relative">
+              <select
+                value={selectedAmountRange}
+                onChange={(e) => setSelectedAmountRange(e.target.value)}
+                className="px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white appearance-none min-w-36"
+              >
+                {amountRanges.map(range => (
+                  <option key={range} value={range}>{range}</option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            </div>
+
+            {/* Date Range Filter */}
+            <DateRangePicker
+              value={dateRange}
+              onChange={setDateRange}
+              className="min-w-44"
             />
+
+            {/* Search Bar - Enhanced */}
+            <div className="relative flex-1 min-w-64">
+              <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search invoices, clients, amounts..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm"
+              />
+            </div>
           </div>
 
-          {/* Status Filter */}
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white min-w-32"
-          >
-            {statuses.map(status => (
-              <option key={status} value={status}>{status}</option>
-            ))}
-          </select>
+          {/* Right side controls */}
+          <div className="flex items-center gap-3">
+            {/* View Toggle Icons */}
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-md transition-all duration-200 ${
+                  viewMode === 'grid' 
+                    ? 'bg-white shadow-sm text-blue-600' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+                title="Grid View"
+              >
+                <LayoutGrid size={16} />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-md transition-all duration-200 ${
+                  viewMode === 'list' 
+                    ? 'bg-white shadow-sm text-blue-600' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+                title="List View"
+              >
+                <List size={16} />
+              </button>
+            </div>
 
-          <div className="text-sm text-gray-500 font-poppins">
-            {filteredInvoices.length} invoice{filteredInvoices.length !== 1 ? 's' : ''}
+            {/* Overdue Toggle */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowOverdue(!showOverdue)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg font-poppins text-sm transition-all duration-200 ${
+                  showOverdue 
+                    ? 'bg-red-100 text-red-700 border border-red-200' 
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+                title="Toggle Overdue Filter"
+              >
+                {showOverdue ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+                Overdue
+              </button>
+            </div>
+
+            {/* Results Count */}
+            <div className="text-sm text-gray-500 font-poppins whitespace-nowrap">
+              {filteredInvoices.length} invoice{filteredInvoices.length !== 1 ? 's' : ''}
+            </div>
+
+            {/* Create Invoice Button */}
+            <button 
+              onClick={handleCreateInvoice}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2.5 rounded-lg font-poppins font-medium transition-all duration-200 flex items-center gap-2 hover:scale-105 whitespace-nowrap"
+            >
+              <Plus size={16} />
+              <span className="hidden sm:inline">Create Invoice</span>
+              <span className="sm:hidden">New</span>
+            </button>
           </div>
         </div>
       </div>
@@ -483,7 +630,10 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack }) => {
             }
           </p>
           {!searchQuery && selectedStatus === 'All' && (
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-poppins font-medium transition-colors duration-200 flex items-center gap-2 mx-auto">
+            <button 
+              onClick={handleCreateInvoice}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-poppins font-medium transition-colors duration-200 flex items-center gap-2 mx-auto"
+            >
               <Plus size={20} />
               Create First Invoice
             </button>
@@ -620,6 +770,8 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack }) => {
           </div>
         </div>
       )}
+
+
     </div>
   );
 };

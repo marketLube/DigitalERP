@@ -19,9 +19,10 @@ interface PLSection {
 
 interface ProfitLossPageProps {
   onBack: () => void;
+  showHeader?: boolean;
 }
 
-const ProfitLossPage: React.FC<ProfitLossPageProps> = ({ onBack }) => {
+const ProfitLossPage: React.FC<ProfitLossPageProps> = ({ onBack, showHeader = true }) => {
   const [selectedPeriod, setSelectedPeriod] = useState('This Month');
   const [comparisonPeriod, setComparisonPeriod] = useState('Previous Month');
   const [viewMode, setViewMode] = useState<'detailed' | 'summary'>('detailed');
@@ -87,7 +88,7 @@ const ProfitLossPage: React.FC<ProfitLossPageProps> = ({ onBack }) => {
   };
 
   const renderPLSection = (section: PLSection) => (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+    <div className="bg-white rounded-xl border border-gray-200 p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className={`text-lg font-poppins font-semibold ${section.color}`}>
           {section.title}
@@ -141,49 +142,80 @@ const ProfitLossPage: React.FC<ProfitLossPageProps> = ({ onBack }) => {
   );
 
   return (
-    <div className="p-6 animate-fadeIn">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-poppins font-semibold text-gray-900 mb-2">
-              Profit & Loss Statement
-            </h1>
-            <p className="text-gray-600 font-poppins">
-              Comprehensive income statement and financial performance analysis
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <select
-              value={selectedPeriod}
-              onChange={(e) => setSelectedPeriod(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white"
-            >
-              <option value="This Month">This Month</option>
-              <option value="Last Month">Last Month</option>
-              <option value="This Quarter">This Quarter</option>
-              <option value="This Year">This Year</option>
-              <option value="Custom">Custom Range</option>
-            </select>
+    <div className={showHeader ? "p-6 animate-fadeIn" : "animate-fadeIn"}>
+      {/* Header - Only show when showHeader is true */}
+      {showHeader && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-poppins font-semibold text-gray-900 mb-2">
+                Profit & Loss
+              </h1>
+              <p className="text-gray-600 font-poppins">
+                Analyze profit and loss statements for financial insights
+              </p>
+            </div>
             
-            <button
-              onClick={() => setViewMode(viewMode === 'detailed' ? 'summary' : 'detailed')}
-              className="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 font-poppins font-medium hover:bg-gray-50 transition-colors duration-200"
-            >
-              {viewMode === 'detailed' ? 'Summary View' : 'Detailed View'}
-            </button>
-            
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-poppins font-medium transition-colors duration-200 flex items-center gap-2">
-              <Download size={16} />
-              Export PDF
-            </button>
+            <div className="flex items-center gap-3">
+              <select
+                value={selectedPeriod}
+                onChange={(e) => setSelectedPeriod(e.target.value)}
+                className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white"
+              >
+                <option value="This Month">This Month</option>
+                <option value="Last Month">Last Month</option>
+                <option value="This Quarter">This Quarter</option>
+                <option value="This Year">This Year</option>
+                <option value="Custom">Custom Range</option>
+              </select>
+              
+              <button
+                onClick={() => setViewMode(viewMode === 'detailed' ? 'summary' : 'detailed')}
+                className="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 font-poppins font-medium hover:bg-gray-50 transition-colors duration-200"
+              >
+                {viewMode === 'detailed' ? 'Summary View' : 'Detailed View'}
+              </button>
+              
+              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-poppins font-medium transition-colors duration-200 flex items-center gap-2">
+                <Download size={16} />
+                Export PDF
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Controls Bar - Always show when used as tab */}
+      {!showHeader && (
+        <div className="flex items-center justify-end gap-3 mb-6">
+          <select
+            value={selectedPeriod}
+            onChange={(e) => setSelectedPeriod(e.target.value)}
+            className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white"
+          >
+            <option value="This Month">This Month</option>
+            <option value="Last Month">Last Month</option>
+            <option value="This Quarter">This Quarter</option>
+            <option value="This Year">This Year</option>
+            <option value="Custom">Custom Range</option>
+          </select>
+          
+          <button
+            onClick={() => setViewMode(viewMode === 'detailed' ? 'summary' : 'detailed')}
+            className="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 font-poppins font-medium hover:bg-gray-50 transition-colors duration-200"
+          >
+            {viewMode === 'detailed' ? 'Summary View' : 'Detailed View'}
+          </button>
+          
+          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-poppins font-medium transition-colors duration-200 flex items-center gap-2">
+            <Download size={16} />
+            Export PDF
+          </button>
+        </div>
+      )}
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
           <div className="flex items-center gap-3 mb-3">
             <DollarSign size={20} className="text-green-600" />
@@ -239,12 +271,12 @@ const ProfitLossPage: React.FC<ProfitLossPageProps> = ({ onBack }) => {
       </div>
 
       {viewMode === 'detailed' ? (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Revenue Section */}
           {renderPLSection(revenue)}
 
           {/* Gross Profit Calculation */}
-          <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl border border-blue-200 p-6">
+          <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl border border-blue-200 p-5">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-poppins font-semibold text-blue-900">
                 Gross Profit
@@ -264,7 +296,7 @@ const ProfitLossPage: React.FC<ProfitLossPageProps> = ({ onBack }) => {
           {renderPLSection(costOfGoodsSold)}
 
           {/* Operating Income Calculation */}
-          <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl border border-purple-200 p-6">
+          <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl border border-purple-200 p-5">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-poppins font-semibold text-purple-900">
                 Operating Income
@@ -284,7 +316,7 @@ const ProfitLossPage: React.FC<ProfitLossPageProps> = ({ onBack }) => {
           {renderPLSection(operatingExpenses)}
 
           {/* Net Income */}
-          <div className={`bg-gradient-to-r ${netIncome >= 0 ? 'from-green-50 to-green-100 border-green-200' : 'from-red-50 to-red-100 border-red-200'} rounded-xl border p-6`}>
+          <div className={`bg-gradient-to-r ${netIncome >= 0 ? 'from-green-50 to-green-100 border-green-200' : 'from-red-50 to-red-100 border-red-200'} rounded-xl border p-5`}>
             <div className="flex items-center justify-between">
               <h3 className={`text-lg font-poppins font-semibold ${netIncome >= 0 ? 'text-green-900' : 'text-red-900'}`}>
                 Net Income

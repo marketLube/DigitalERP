@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Calendar, Search, Filter, Plus, Download, Eye, Edit3, Trash2, ArrowUpRight, ArrowDownRight, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { Calendar, Search, Filter, Plus, Download, Eye, Edit3, Trash2, ArrowUpRight, ArrowDownRight, TrendingUp, TrendingDown, DollarSign, ChevronDown, LayoutGrid, List, ToggleLeft, ToggleRight } from 'lucide-react';
+import DateRangePicker, { DateRange } from '../Common/DateRangePicker';
 
 interface Transaction {
   id: string;
@@ -19,14 +20,23 @@ interface Transaction {
 
 interface DayBookPageProps {
   onBack: () => void;
+  showHeader?: boolean;
 }
 
-const DayBookPage: React.FC<DayBookPageProps> = ({ onBack }) => {
+const DayBookPage: React.FC<DayBookPageProps> = ({ onBack, showHeader = true }) => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedType, setSelectedType] = useState('All');
-  const [viewMode, setViewMode] = useState<'list' | 'summary'>('list');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('All');
+  const [selectedAmountRange, setSelectedAmountRange] = useState('All');
+  const [dateRange, setDateRange] = useState<DateRange>({
+    startDate: '',
+    endDate: '',
+    preset: 'all'
+  });
+  const [showPending, setShowPending] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
   const transactions: Transaction[] = [
     {
@@ -123,16 +133,34 @@ const DayBookPage: React.FC<DayBookPageProps> = ({ onBack }) => {
 
   const categories = ['All', 'Revenue', 'Operating Expenses', 'Software & Tools', 'Contractor Fees', 'Product Revenue', 'Marketing'];
   const types = ['All', 'Income', 'Expense'];
+  const paymentMethods = ['All', 'Bank Transfer', 'Credit Card', 'Check', 'PayPal', 'Stripe', 'Cash'];
+  const amountRanges = ['All', 'Under $1K', '$1K-$5K', '$5K-$10K', 'Over $10K'];
 
   const filteredTransactions = transactions.filter(transaction => {
     const matchesSearch = transaction.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          transaction.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         transaction.reference.toLowerCase().includes(searchQuery.toLowerCase());
+                         transaction.reference.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         transaction.paymentMethod.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         transaction.notes.toLowerCase().includes(searchQuery.toLowerCase());
+    
     const matchesCategory = selectedCategory === 'All' || transaction.category === selectedCategory;
     const matchesType = selectedType === 'All' || transaction.type.toLowerCase() === selectedType.toLowerCase();
-    const matchesDate = transaction.date === selectedDate;
+    const matchesPaymentMethod = selectedPaymentMethod === 'All' || transaction.paymentMethod === selectedPaymentMethod;
     
-    return matchesSearch && matchesCategory && matchesType && matchesDate;
+    const matchesAmountRange = selectedAmountRange === 'All' || 
+      (selectedAmountRange === 'Under $1K' && transaction.amount < 1000) ||
+      (selectedAmountRange === '$1K-$5K' && transaction.amount >= 1000 && transaction.amount < 5000) ||
+      (selectedAmountRange === '$5K-$10K' && transaction.amount >= 5000 && transaction.amount < 10000) ||
+      (selectedAmountRange === 'Over $10K' && transaction.amount >= 10000);
+    
+    const matchesDate = dateRange.preset !== 'all' && dateRange.startDate && dateRange.endDate ? 
+      (transaction.date >= dateRange.startDate && transaction.date <= dateRange.endDate) :
+      transaction.date === selectedDate;
+    
+    const matchesPendingFilter = !showPending || transaction.status === 'pending';
+    
+    return matchesSearch && matchesCategory && matchesType && matchesPaymentMethod && 
+           matchesAmountRange && matchesDate && matchesPendingFilter;
   });
 
   const totalIncome = filteredTransactions
@@ -156,39 +184,34 @@ const DayBookPage: React.FC<DayBookPageProps> = ({ onBack }) => {
   };
 
   return (
-    <div className="p-6 animate-fadeIn">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-poppins font-semibold text-gray-900 mb-2">
-              Day Book
-            </h1>
-            <p className="text-gray-600 font-poppins">
-              Daily transaction records and financial activity
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setViewMode(viewMode === 'list' ? 'summary' : 'list')}
-              className="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 font-poppins font-medium hover:bg-gray-50 transition-colors duration-200"
-            >
-              {viewMode === 'list' ? 'Summary View' : 'List View'}
-            </button>
+    <div className={showHeader ? "p-6 animate-fadeIn" : "animate-fadeIn"}>
+      {/* Header - Only show when showHeader is true */}
+      {showHeader && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-poppins font-semibold text-gray-900 mb-2">
+                Day Book
+              </h1>
+              <p className="text-gray-600 font-poppins">
+                Daily transaction records and financial activity
+              </p>
+            </div>
             
-            <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-poppins font-medium transition-colors duration-200 flex items-center gap-2">
-              <Plus size={16} />
-              Add Transaction
-            </button>
-            
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-poppins font-medium transition-colors duration-200 flex items-center gap-2">
-              <Download size={16} />
-              Export
-            </button>
+            <div className="flex items-center gap-3">
+              <button className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-poppins font-medium transition-colors duration-200 flex items-center gap-2">
+                <Plus size={16} />
+                Add Transaction
+              </button>
+              
+              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-poppins font-medium transition-colors duration-200 flex items-center gap-2">
+                <Download size={16} />
+                Export
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Date and Summary Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
@@ -249,45 +272,146 @@ const DayBookPage: React.FC<DayBookPageProps> = ({ onBack }) => {
         </div>
       </div>
 
-      {/* Filters */}
+            {/* Enhanced Filter Bar - Single Row */}
       <div className="bg-white p-4 rounded-xl border border-gray-200 mb-6">
-        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-          {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search transactions..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm"
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4 justify-between">
+          {/* Left Side - Filter Controls */}
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+            {/* Category Dropdown */}
+            <div className="relative">
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2.5 pr-8 font-poppins text-sm text-gray-700 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-40"
+              >
+                {categories.map(category => (
+                  <option key={category} value={category}>
+                    {category === 'All' ? 'All Categories' : category}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
+
+            {/* Type Dropdown */}
+            <div className="relative">
+              <select
+                value={selectedType}
+                onChange={(e) => setSelectedType(e.target.value)}
+                className="appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2.5 pr-8 font-poppins text-sm text-gray-700 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-32"
+              >
+                {types.map(type => (
+                  <option key={type} value={type}>
+                    {type === 'All' ? 'All Types' : type}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
+
+            {/* Payment Method Dropdown */}
+            <div className="relative">
+              <select
+                value={selectedPaymentMethod}
+                onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+                className="appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2.5 pr-8 font-poppins text-sm text-gray-700 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-40"
+              >
+                {paymentMethods.map(method => (
+                  <option key={method} value={method}>
+                    {method === 'All' ? 'All Methods' : method}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
+
+            {/* Amount Range Dropdown */}
+            <div className="relative">
+              <select
+                value={selectedAmountRange}
+                onChange={(e) => setSelectedAmountRange(e.target.value)}
+                className="appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2.5 pr-8 font-poppins text-sm text-gray-700 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-36"
+              >
+                {amountRanges.map(range => (
+                  <option key={range} value={range}>
+                    {range === 'All' ? 'All Amounts' : range}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={16} className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
+
+            {/* Date Range Picker */}
+            <DateRangePicker
+              value={dateRange}
+              onChange={setDateRange}
+              showAllOption={true}
             />
+
+            {/* Search Bar */}
+            <div className="relative flex-1 max-w-md">
+              <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search transactions, categories, references..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm"
+              />
+            </div>
           </div>
 
-          {/* Category Filter */}
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white min-w-40"
-          >
-            {categories.map(category => (
-              <option key={category} value={category}>{category}</option>
-            ))}
-          </select>
+          {/* Right Side - Controls */}
+          <div className="flex items-center gap-4">
+            {/* View Toggle */}
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-md transition-colors duration-200 ${
+                  viewMode === 'grid'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+                title="Grid View"
+              >
+                <LayoutGrid size={16} />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-md transition-colors duration-200 ${
+                  viewMode === 'list'
+                    ? 'bg-white text-blue-600 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+                title="List View"
+              >
+                <List size={16} />
+              </button>
+            </div>
 
-          {/* Type Filter */}
-          <select
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-            className="px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white min-w-32"
-          >
-            {types.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
+            {/* Pending Toggle */}
+            <button
+              onClick={() => setShowPending(!showPending)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg font-poppins text-sm font-medium transition-colors duration-200 ${
+                showPending
+                  ? 'bg-orange-50 text-orange-700 border border-orange-200'
+                  : 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100'
+              }`}
+            >
+              {showPending ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
+              Pending
+            </button>
 
-          <div className="text-sm text-gray-500 font-poppins">
-            {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''}
+            {/* Results Counter */}
+            <div className="text-sm text-gray-500 font-poppins">
+              {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''}
+            </div>
+
+            {/* Add Transaction Button */}
+            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-poppins font-medium transition-colors duration-200 flex items-center gap-2">
+              <Plus size={16} />
+              Add Transaction
+            </button>
           </div>
         </div>
       </div>
