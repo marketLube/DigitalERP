@@ -80,6 +80,20 @@ export const sidebarModules: SidebarModule[] = [
       { name: 'Export', href: '/reports/export' }
     ]
   },
+  {
+    id: 'chats',
+    name: 'Team Chats',
+    icon: 'MessageSquare',
+    subRoutes: [
+      { name: 'All Channels', href: '/chats/channels' },
+      { name: 'Announcements', href: '/chats/announcements' },
+      { name: 'Video Production', href: '/chats/video-production' },
+      { name: 'UI/UX Design', href: '/chats/ui-ux-design' },
+      { name: 'Development', href: '/chats/development' },
+      { name: 'Marketing', href: '/chats/marketing' },
+      { name: 'Sales', href: '/chats/sales' }
+    ]
+  },
 
   {
     id: 'settings',

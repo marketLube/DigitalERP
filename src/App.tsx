@@ -23,6 +23,8 @@ import TeamReportsPage from './components/Reports/TeamReportsPage';
 import ExportPage from './components/Reports/ExportPage';
 
 import TestDesigns from './components/Test/TestDesigns';
+import ChatDashboard from './components/Chat/ChatDashboard';
+import FloatingChatIcon from './components/Chat/FloatingChatIcon';
 
 type PageType = 
   | 'dashboard' | 'dashboard-smart-recommendations'
@@ -31,6 +33,7 @@ type PageType =
   | 'hr-dashboard' | 'hr-directory' | 'hr-attendance' | 'hr-leave' | 'hr-recruitment' | 'hr-performance' | 'hr-payroll' | 'hr-documents' | 'hr-reports' | 'hr-employee-hub' | 'hr-settings'
   | 'accounting-dashboard' | 'accounting-daybook' | 'accounting-invoices' | 'accounting-tax' | 'accounting-profit-loss' | 'accounting-settings'
   | 'reports-dashboard' | 'reports-tasks' | 'reports-team' | 'reports-export'
+  | 'chats-channels' | 'chats-announcements' | 'chats-video-production' | 'chats-ui-ux-design' | 'chats-development' | 'chats-marketing' | 'chats-sales'
   | 'settings-general' | 'settings-teams' | 'settings-roles' | 'settings-integrations'
   | 'team-overview' | 'status-management'
   | 'test-compact' | 'test-minimal' | 'test-animated';
@@ -150,6 +153,16 @@ function App() {
       // Dashboard Smart Recommendations
       case 'dashboard-smart-recommendations':
         return <DashboardContent defaultTab="smart-recommendations" />;
+      
+      // Chats
+      case 'chats-channels':
+      case 'chats-announcements':
+      case 'chats-video-production':
+      case 'chats-ui-ux-design':
+      case 'chats-development':
+      case 'chats-marketing':
+      case 'chats-sales':
+        return <ChatDashboard />;
 
       // Settings
       case 'settings-general':
@@ -212,6 +225,7 @@ function App() {
     if (page.startsWith('hr')) return 'hr';
     if (page.startsWith('accounting')) return 'accounting';
     if (page.startsWith('reports')) return 'reports';
+    if (page.startsWith('chats')) return 'chats';
     if (page.startsWith('settings') || page === 'team-overview' || page === 'status-management') return 'settings';
     if (page.startsWith('test')) return 'test';
     return 'dashboard';
@@ -229,6 +243,11 @@ function App() {
           {renderContent()}
         </main>
       </div>
+      
+      {/* Floating Chat Icon - Always visible */}
+      <FloatingChatIcon
+        onNavigateToChats={() => navigateToPage('chats-channels')}
+      />
     </div>
   );
 }

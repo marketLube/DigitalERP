@@ -108,7 +108,22 @@ const SidebarFlyout: React.FC<SidebarFlyoutProps> = ({
         onNavigate('reports-export');
       }
       
-
+      // Chat routes
+      else if (route.href === '/chats/channels') {
+        onNavigate('chats-channels');
+      } else if (route.href === '/chats/announcements') {
+        onNavigate('chats-announcements');
+      } else if (route.href === '/chats/video-production') {
+        onNavigate('chats-video-production');
+      } else if (route.href === '/chats/ui-ux-design') {
+        onNavigate('chats-ui-ux-design');
+      } else if (route.href === '/chats/development') {
+        onNavigate('chats-development');
+      } else if (route.href === '/chats/marketing') {
+        onNavigate('chats-marketing');
+      } else if (route.href === '/chats/sales') {
+        onNavigate('chats-sales');
+      }
       
       // Settings routes
       else if (route.href === '/settings/general') {
