@@ -313,171 +313,175 @@ const AccountingDashboard: React.FC<AccountingDashboardProps> = ({
 
   return (
     <div className="p-6 animate-fadeIn">
-      {/* Compact Single-Row Header */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between">
-          {/* Left - Page Title */}
-          <div className="flex-shrink-0">
-            <h1 className="text-2xl font-poppins font-semibold text-gray-900">
+      {/* Header with Tabs in Top Right */}
+      <div className="mb-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-poppins font-semibold text-gray-900 mb-2">
               {getPageTitle()}
             </h1>
+            <p className="text-gray-600 font-poppins">
+              {getPageDescription()}
+            </p>
           </div>
-
-          {/* Center - Financial Metrics (Only on Overview) */}
-          {activeTab === 'overview' && (
-            <div className="flex items-center gap-4 mx-8">
-              {/* Total Revenue */}
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
-                  <TrendingUp size={12} className="text-green-600" />
-                </div>
-                <div>
-                  <div className="font-poppins font-semibold text-gray-900 text-sm">
-                    $124,562
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    Total Revenue
-                  </div>
-                </div>
-              </div>
-
-              {/* Total Expenses */}
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
-                  <TrendingDown size={12} className="text-red-600" />
-                </div>
-                <div>
-                  <div className="font-poppins font-semibold text-gray-900 text-sm">
-                    $89,234
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    Total Expenses
-                  </div>
-                </div>
-              </div>
-
-              {/* Net Profit */}
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
-                  <DollarSign size={12} className="text-blue-600" />
-                </div>
-                <div>
-                  <div className="font-poppins font-semibold text-gray-900 text-sm">
-                    $35,328
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    Net Profit
-                  </div>
-                </div>
-              </div>
-
-              {/* Outstanding */}
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-orange-100 rounded-full flex items-center justify-center">
-                  <FileText size={12} className="text-orange-600" />
-                </div>
-                <div>
-                  <div className="font-poppins font-semibold text-gray-900 text-sm">
-                    $18,450
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    Outstanding
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Right - Tab Navigation */}
-          <div className="flex items-center gap-3">
+          
+          {/* Tab Navigation - Top Right */}
+          <div className="flex items-center gap-6 border-b border-gray-200 pb-3">
             <button
               onClick={() => handleTabSwitch('overview')}
-              className={`px-3 py-2 font-poppins font-medium text-sm rounded-lg transition-colors flex items-center gap-1 whitespace-nowrap ${
+              className={`pb-3 border-b-2 font-poppins font-medium text-sm transition-colors flex items-center gap-2 whitespace-nowrap ${
                 activeTab === 'overview' 
-                  ? 'bg-blue-100 text-blue-600' 
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  ? 'border-blue-500 text-blue-600' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              <LayoutGrid size={14} />
+              <LayoutGrid size={16} />
               Dashboard
             </button>
             <button
               onClick={() => handleTabSwitch('daybook')}
-              className={`px-3 py-2 font-poppins font-medium text-sm rounded-lg transition-colors flex items-center gap-1 whitespace-nowrap ${
+              className={`pb-3 border-b-2 font-poppins font-medium text-sm transition-colors flex items-center gap-2 whitespace-nowrap ${
                 activeTab === 'daybook' 
-                  ? 'bg-blue-100 text-blue-600' 
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  ? 'border-blue-500 text-blue-600' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              <BookOpen size={14} />
+              <BookOpen size={16} />
               Day Book
             </button>
             <button
               onClick={() => handleTabSwitch('invoices')}
-              className={`px-3 py-2 font-poppins font-medium text-sm rounded-lg transition-colors flex items-center gap-1 whitespace-nowrap ${
+              className={`pb-3 border-b-2 font-poppins font-medium text-sm transition-colors flex items-center gap-2 whitespace-nowrap ${
                 activeTab === 'invoices' 
-                  ? 'bg-blue-100 text-blue-600' 
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  ? 'border-blue-500 text-blue-600' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              <FileText size={14} />
+              <FileText size={16} />
               Invoices
             </button>
             <button
               onClick={() => handleTabSwitch('tax-compliance')}
-              className={`px-3 py-2 font-poppins font-medium text-sm rounded-lg transition-colors flex items-center gap-1 whitespace-nowrap ${
+              className={`pb-3 border-b-2 font-poppins font-medium text-sm transition-colors flex items-center gap-2 whitespace-nowrap ${
                 activeTab === 'tax-compliance' 
-                  ? 'bg-blue-100 text-blue-600' 
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  ? 'border-blue-500 text-blue-600' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              <Receipt size={14} />
+              <Receipt size={16} />
               Tax Compliance
             </button>
             <button
               onClick={() => handleTabSwitch('profit-loss')}
-              className={`px-3 py-2 font-poppins font-medium text-sm rounded-lg transition-colors flex items-center gap-1 whitespace-nowrap ${
+              className={`pb-3 border-b-2 font-poppins font-medium text-sm transition-colors flex items-center gap-2 whitespace-nowrap ${
                 activeTab === 'profit-loss' 
-                  ? 'bg-blue-100 text-blue-600' 
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  ? 'border-blue-500 text-blue-600' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              <BarChart3 size={14} />
+              <BarChart3 size={16} />
               P&L
             </button>
             <button
               onClick={() => handleTabSwitch('settings')}
-              className={`px-3 py-2 font-poppins font-medium text-sm rounded-lg transition-colors flex items-center gap-1 whitespace-nowrap ${
+              className={`pb-3 border-b-2 font-poppins font-medium text-sm transition-colors flex items-center gap-2 whitespace-nowrap ${
                 activeTab === 'settings' 
-                  ? 'bg-blue-100 text-blue-600' 
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                  ? 'border-blue-500 text-blue-600' 
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              <Settings size={14} />
+              <Settings size={16} />
               Settings
             </button>
           </div>
         </div>
 
-        {/* Export controls for overview - separate row */}
+        {/* Overview Summary Stats - Only show on Overview tab */}
         {activeTab === 'overview' && (
-          <div className="flex justify-end mt-3 gap-3">
-            <select
-              value={selectedPeriod}
-              onChange={(e) => setSelectedPeriod(e.target.value)}
-              className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white"
-            >
-              <option value="Today">Today</option>
-              <option value="This Week">This Week</option>
-              <option value="This Month">This Month</option>
-              <option value="This Quarter">This Quarter</option>
-              <option value="This Year">This Year</option>
-            </select>
-            
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-poppins font-medium transition-colors duration-200 flex items-center gap-2">
-              <Download size={16} />
-              Export
-            </button>
+          <div className="mt-4 bg-white p-4 rounded-xl border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-6 flex-wrap">
+                {/* Total Revenue */}
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                    <TrendingUp size={16} className="text-green-600" />
+                  </div>
+                  <div>
+                    <div className="font-poppins font-semibold text-gray-900">
+                      $124,562
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Total Revenue
+                    </div>
+                  </div>
+                </div>
+
+                {/* Total Expenses */}
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                    <TrendingDown size={16} className="text-red-600" />
+                  </div>
+                  <div>
+                    <div className="font-poppins font-semibold text-gray-900">
+                      $89,234
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Total Expenses
+                    </div>
+                  </div>
+                </div>
+
+                {/* Net Profit */}
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <DollarSign size={16} className="text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="font-poppins font-semibold text-gray-900">
+                      $35,328
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Net Profit
+                    </div>
+                  </div>
+                </div>
+
+                {/* Outstanding Invoices */}
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                    <FileText size={16} className="text-orange-600" />
+                  </div>
+                  <div>
+                    <div className="font-poppins font-semibold text-gray-900">
+                      $18,450
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Outstanding
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right side controls */}
+              <div className="flex items-center gap-3">
+                <select
+                  value={selectedPeriod}
+                  onChange={(e) => setSelectedPeriod(e.target.value)}
+                  className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white"
+                >
+                  <option value="Today">Today</option>
+                  <option value="This Week">This Week</option>
+                  <option value="This Month">This Month</option>
+                  <option value="This Quarter">This Quarter</option>
+                  <option value="This Year">This Year</option>
+                </select>
+                
+                <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-poppins font-medium transition-colors duration-200 flex items-center gap-2">
+                  <Download size={16} />
+                  Export
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
