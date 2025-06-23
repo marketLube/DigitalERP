@@ -22,13 +22,14 @@ import TaskReportsPage from './components/Reports/TaskReportsPage';
 import TeamReportsPage from './components/Reports/TeamReportsPage';
 import ExportPage from './components/Reports/ExportPage';
 import TestDesigns from './components/Test/TestDesigns';
+import InlineInvoiceMaker from './components/Accounting/InlineInvoiceMaker';
 
 type PageType = 
   | 'dashboard' 
   | 'taskboard' | 'taskboard-notes' | 'taskboard-my-tasks' | 'taskboard-calendar' | 'taskboard-reports' | 'taskboard-settings'
   | 'sales-pipeline' | 'sales-appointments' | 'sales-proposals' | 'sales-analytics' | 'sales-settings'
   | 'hr-dashboard' | 'hr-directory' | 'hr-attendance' | 'hr-leave' | 'hr-recruitment' | 'hr-performance' | 'hr-payroll' | 'hr-documents' | 'hr-reports' | 'hr-employee-hub' | 'hr-settings'
-  | 'accounting-dashboard' | 'accounting-daybook' | 'accounting-invoices' | 'accounting-tax' | 'accounting-profit-loss' | 'accounting-settings'
+  | 'accounting-dashboard' | 'accounting-daybook' | 'accounting-invoices' | 'accounting-tax' | 'accounting-profit-loss' | 'accounting-settings' | 'invoice-create'
   | 'reports-dashboard' | 'reports-tasks' | 'reports-team' | 'reports-export'
   | 'settings-general' | 'settings-teams' | 'settings-roles' | 'settings-integrations'
   | 'team-overview' | 'status-management'
@@ -119,21 +120,34 @@ function App() {
 
       // Accounting
       case 'accounting-dashboard':
-        return <AccountingDashboard onNavigate={(page) => navigateToPage(`accounting-${page}` as PageType)} />;
+        return <AccountingDashboard initialTab="overview" onTabChange={(tab) => navigateToPage(tab as PageType)} onNavigate={(page) => navigateToPage(page as PageType)} />;
       case 'accounting-daybook':
-        return <DayBookPage onBack={() => navigateToPage('accounting-dashboard')} />;
+        return <AccountingDashboard initialTab="daybook" onTabChange={(tab) => navigateToPage(tab as PageType)} onNavigate={(page) => navigateToPage(page as PageType)} />;
       case 'accounting-invoices':
-        return <InvoicesPage onBack={() => navigateToPage('accounting-dashboard')} />;
+        return <AccountingDashboard initialTab="invoices" onTabChange={(tab) => navigateToPage(tab as PageType)} onNavigate={(page) => navigateToPage(page as PageType)} />;
       case 'accounting-tax':
-        return <TaxCompliancePage onBack={() => navigateToPage('accounting-dashboard')} />;
+        return <AccountingDashboard initialTab="tax-compliance" onTabChange={(tab) => navigateToPage(tab as PageType)} onNavigate={(page) => navigateToPage(page as PageType)} />;
       case 'accounting-profit-loss':
-        return <ProfitLossPage onBack={() => navigateToPage('accounting-dashboard')} />;
+        return <AccountingDashboard initialTab="profit-loss" onTabChange={(tab) => navigateToPage(tab as PageType)} onNavigate={(page) => navigateToPage(page as PageType)} />;
       case 'accounting-settings':
         return (
           <div className="p-6">
             <h1 className="text-2xl font-poppins font-semibold text-gray-900 mb-4">Accounting Settings</h1>
             <p className="text-gray-600 font-poppins">Accounting settings page coming soon...</p>
           </div>
+        );
+
+      // Invoice Creation
+      case 'invoice-create':
+        return (
+          <InlineInvoiceMaker
+            onClose={() => navigateToPage('accounting-invoices')}
+            onSave={(invoice) => {
+              console.log('Invoice created:', invoice);
+              navigateToPage('accounting-invoices');
+              // Here you would typically save to your backend
+            }}
+          />
         );
 
       // Reports

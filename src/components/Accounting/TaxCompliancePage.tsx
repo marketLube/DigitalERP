@@ -23,9 +23,10 @@ interface TaxSummary {
 
 interface TaxCompliancePageProps {
   onBack: () => void;
+  showHeader?: boolean;
 }
 
-const TaxCompliancePage: React.FC<TaxCompliancePageProps> = ({ onBack }) => {
+const TaxCompliancePage: React.FC<TaxCompliancePageProps> = ({ onBack, showHeader = true }) => {
   const [selectedYear, setSelectedYear] = useState('2024');
   const [selectedType, setSelectedType] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('All');
@@ -134,50 +135,79 @@ const TaxCompliancePage: React.FC<TaxCompliancePageProps> = ({ onBack }) => {
     .slice(0, 5);
 
   return (
-    <div className="p-6 animate-fadeIn">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-poppins font-semibold text-gray-900 mb-2">
-              Tax Compliance
-            </h1>
-            <p className="text-gray-600 font-poppins">
-              Manage tax filings, deadlines, and compliance requirements
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white"
-            >
-              <option value="2024">2024</option>
-              <option value="2023">2023</option>
-              <option value="2022">2022</option>
-            </select>
+    <div className={showHeader ? "p-6 animate-fadeIn" : "animate-fadeIn"}>
+      {/* Header - Only show when showHeader is true */}
+      {showHeader && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-poppins font-semibold text-gray-900 mb-2">
+                Tax Compliance
+              </h1>
+              <p className="text-gray-600 font-poppins">
+                Manage tax filings, compliance, and regulatory reports
+              </p>
+            </div>
             
-            <button
-              onClick={() => setViewMode(viewMode === 'overview' ? 'records' : 'overview')}
-              className="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 font-poppins font-medium hover:bg-gray-50 transition-colors duration-200"
-            >
-              {viewMode === 'overview' ? 'View Records' : 'Overview'}
-            </button>
-            
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-poppins font-medium transition-colors duration-200 flex items-center gap-2">
-              <Download size={16} />
-              Export Report
-            </button>
+            <div className="flex items-center gap-3">
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white"
+              >
+                <option value="2024">2024</option>
+                <option value="2023">2023</option>
+                <option value="2022">2022</option>
+              </select>
+              
+              <button
+                onClick={() => setViewMode(viewMode === 'overview' ? 'records' : 'overview')}
+                className="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 font-poppins font-medium hover:bg-gray-50 transition-colors duration-200"
+              >
+                {viewMode === 'overview' ? 'View Records' : 'Overview'}
+              </button>
+              
+              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-poppins font-medium transition-colors duration-200 flex items-center gap-2">
+                <Download size={16} />
+                Export Report
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Controls Bar - Always show when used as tab */}
+      {!showHeader && (
+        <div className="flex items-center justify-end gap-3 mb-6">
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white"
+          >
+            <option value="2024">2024</option>
+            <option value="2023">2023</option>
+            <option value="2022">2022</option>
+          </select>
+          
+          <button
+            onClick={() => setViewMode(viewMode === 'overview' ? 'records' : 'overview')}
+            className="px-4 py-2 border border-gray-200 rounded-lg text-gray-700 font-poppins font-medium hover:bg-gray-50 transition-colors duration-200"
+          >
+            {viewMode === 'overview' ? 'View Records' : 'Overview'}
+          </button>
+          
+          <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-poppins font-medium transition-colors duration-200 flex items-center gap-2">
+            <Download size={16} />
+            Export Report
+          </button>
+        </div>
+      )}
 
       {viewMode === 'overview' ? (
         <>
           {/* Tax Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
               <div className="flex items-center gap-3 mb-3">
                 <Calculator size={20} className="text-blue-600" />
                 <span className="font-poppins font-medium text-gray-900">Total Liability</span>
@@ -190,7 +220,7 @@ const TaxCompliancePage: React.FC<TaxCompliancePageProps> = ({ onBack }) => {
               </p>
             </div>
 
-            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
               <div className="flex items-center gap-3 mb-3">
                 <CheckCircle size={20} className="text-green-600" />
                 <span className="font-poppins font-medium text-gray-900">Paid/Filed</span>
@@ -203,7 +233,7 @@ const TaxCompliancePage: React.FC<TaxCompliancePageProps> = ({ onBack }) => {
               </p>
             </div>
 
-            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
               <div className="flex items-center gap-3 mb-3">
                 <Clock size={20} className="text-yellow-600" />
                 <span className="font-poppins font-medium text-gray-900">Pending</span>
@@ -216,7 +246,7 @@ const TaxCompliancePage: React.FC<TaxCompliancePageProps> = ({ onBack }) => {
               </p>
             </div>
 
-            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
               <div className="flex items-center gap-3 mb-3">
                 <AlertTriangle size={20} className="text-red-600" />
                 <span className="font-poppins font-medium text-gray-900">Overdue</span>
@@ -231,15 +261,15 @@ const TaxCompliancePage: React.FC<TaxCompliancePageProps> = ({ onBack }) => {
           </div>
 
           {/* Upcoming Deadlines */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-              <div className="p-6 border-b border-gray-200">
+              <div className="p-5 border-b border-gray-200">
                 <h2 className="text-lg font-poppins font-semibold text-gray-900 flex items-center gap-2">
                   <Calendar size={20} className="text-orange-600" />
                   Upcoming Deadlines
                 </h2>
               </div>
-              <div className="p-6">
+              <div className="p-5">
                 {upcomingDeadlines.length === 0 ? (
                   <div className="text-center py-8">
                     <CheckCircle size={48} className="text-green-300 mx-auto mb-4" />
@@ -285,13 +315,13 @@ const TaxCompliancePage: React.FC<TaxCompliancePageProps> = ({ onBack }) => {
 
             {/* Tax Calendar */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-              <div className="p-6 border-b border-gray-200">
+              <div className="p-5 border-b border-gray-200">
                 <h2 className="text-lg font-poppins font-semibold text-gray-900 flex items-center gap-2">
                   <Receipt size={20} className="text-purple-600" />
                   Tax Calendar {selectedYear}
                 </h2>
               </div>
-              <div className="p-6">
+              <div className="p-5">
                 <div className="space-y-4">
                   {[
                     { month: 'January', items: ['Annual W-2 Forms Due', 'Q4 Payroll Tax'] },
@@ -321,12 +351,12 @@ const TaxCompliancePage: React.FC<TaxCompliancePageProps> = ({ onBack }) => {
 
           {/* Quick Actions */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-            <div className="p-6 border-b border-gray-200">
+            <div className="p-5 border-b border-gray-200">
               <h2 className="text-lg font-poppins font-semibold text-gray-900">
                 Quick Actions
               </h2>
             </div>
-            <div className="p-6">
+            <div className="p-5">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-200 text-left group">
                   <div className="flex items-center gap-3 mb-2">

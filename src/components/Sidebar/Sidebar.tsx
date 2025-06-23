@@ -9,6 +9,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ onNavigate, currentPage = 'dashboard' }) => {
   const getActiveModule = (moduleId: string, currentPage: string) => {
+    // Special mapping for modules that have different IDs vs currentPage values
     if (moduleId === 'tasks' && currentPage === 'taskboard') return true;
     if (moduleId === currentPage) return true;
     return false;
