@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { FileText, Search, Filter, Plus, Download, Eye, Edit3, Trash2, Send, DollarSign, Calendar, Clock, CheckCircle, AlertCircle, Copy, ChevronDown, LayoutGrid, List, ToggleLeft, ToggleRight, DollarSign as Currency, X, ArrowLeft, ArrowRight } from 'lucide-react';
 import DateRangePicker, { DateRange } from '../Common/DateRangePicker';
+import CreateInvoiceModal from './CreateInvoiceModal';
+import InlineInvoiceMaker from './InlineInvoiceMaker';
 
 
 interface Invoice {
@@ -225,11 +227,13 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack, showHeader = true, 
   };
 
   const handleCreateInvoice = () => {
-    if (onNavigate) {
-      onNavigate('invoice-create');
-    } else {
-      setShowCreateInvoice(true);
-    }
+    setShowCreateInvoice(true);
+  };
+
+  const handleSaveNewInvoice = (newInvoice: any) => {
+    console.log('Saving new invoice:', newInvoice);
+    // Add the new invoice to the list (in a real app, this would make an API call)
+    setShowCreateInvoice(false);
   };
 
   return (
@@ -771,6 +775,13 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack, showHeader = true, 
         </div>
       )}
 
+      {/* Create Invoice Modal */}
+      <CreateInvoiceModal
+        isOpen={showCreateInvoice}
+        onClose={() => setShowCreateInvoice(false)}
+        onSave={handleSaveNewInvoice}
+        invoiceCount={invoices.length}
+      />
 
     </div>
   );

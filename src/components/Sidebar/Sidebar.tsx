@@ -1,6 +1,7 @@
 import React from 'react';
 import { sidebarModules } from '../../data/sidebarData';
 import SidebarItem from './SidebarItem';
+import SuperAdminProfile from '../Common/SuperAdminProfile';
 
 interface SidebarProps {
   onNavigate?: (page: string) => void;
@@ -34,11 +35,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onNavigate, currentPage = 'dashboard'
         ))}
       </nav>
 
-      {/* Bottom Section - Could add user profile or logout */}
+      {/* Super Admin Profile */}
       <div className="absolute bottom-4 left-1 right-1">
-        <button className="w-14 h-14 flex items-center justify-center rounded-xl hover:bg-gray-50 transition-colors duration-200">
-          <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
-        </button>
+        <SuperAdminProfile onLogout={() => console.log('Logout clicked')} />
       </div>
     </div>
   );

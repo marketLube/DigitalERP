@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import Sidebar from './components/Sidebar/Sidebar';
-import TenantHeader from './components/Common/TenantHeader';
 import DashboardContent from './components/Dashboard/DashboardContent';
 import TeamsPage from './components/Settings/TeamsPage';
 import RolesAccessPage from './components/Settings/RolesAccessPage';
@@ -21,8 +20,8 @@ import ReportsDashboard from './components/Reports/ReportsDashboard';
 import TaskReportsPage from './components/Reports/TaskReportsPage';
 import TeamReportsPage from './components/Reports/TeamReportsPage';
 import ExportPage from './components/Reports/ExportPage';
+import BillingInvoicesPage from './components/Settings/BillingInvoicesPage';
 
-import TestDesigns from './components/Test/TestDesigns';
 import ChatDashboard from './components/Chat/ChatDashboard';
 import FloatingChatIcon from './components/Chat/FloatingChatIcon';
 
@@ -34,9 +33,8 @@ type PageType =
   | 'accounting-dashboard' | 'accounting-daybook' | 'accounting-invoices' | 'accounting-tax' | 'accounting-profit-loss' | 'accounting-settings'
   | 'reports-dashboard' | 'reports-tasks' | 'reports-team' | 'reports-export'
   | 'chats-channels' | 'chats-announcements' | 'chats-video-production' | 'chats-ui-ux-design' | 'chats-development' | 'chats-marketing' | 'chats-sales'
-  | 'settings-general' | 'settings-teams' | 'settings-roles' | 'settings-integrations'
-  | 'team-overview' | 'status-management'
-  | 'test-compact' | 'test-minimal' | 'test-animated';
+  | 'settings-general' | 'settings-teams' | 'settings-roles' | 'settings-integrations' | 'settings-billing'
+  | 'team-overview' | 'status-management';
 
 interface AppState {
   currentPage: PageType;
@@ -123,22 +121,17 @@ function App() {
 
       // Accounting
       case 'accounting-dashboard':
-        return <AccountingDashboard onNavigate={(page) => navigateToPage(`accounting-${page}` as PageType)} />;
+        return <AccountingDashboard initialTab="overview" onTabChange={(tab) => navigateToPage(tab as PageType)} />;
       case 'accounting-daybook':
-        return <DayBookPage onBack={() => navigateToPage('accounting-dashboard')} />;
+        return <AccountingDashboard initialTab="daybook" onTabChange={(tab) => navigateToPage(tab as PageType)} />;
       case 'accounting-invoices':
-        return <InvoicesPage onBack={() => navigateToPage('accounting-dashboard')} />;
+        return <AccountingDashboard initialTab="invoices" onTabChange={(tab) => navigateToPage(tab as PageType)} />;
       case 'accounting-tax':
-        return <TaxCompliancePage onBack={() => navigateToPage('accounting-dashboard')} />;
+        return <AccountingDashboard initialTab="tax-compliance" onTabChange={(tab) => navigateToPage(tab as PageType)} />;
       case 'accounting-profit-loss':
-        return <ProfitLossPage onBack={() => navigateToPage('accounting-dashboard')} />;
+        return <AccountingDashboard initialTab="profit-loss" onTabChange={(tab) => navigateToPage(tab as PageType)} />;
       case 'accounting-settings':
-        return (
-          <div className="p-6">
-            <h1 className="text-2xl font-poppins font-semibold text-gray-900 mb-4">Accounting Settings</h1>
-            <p className="text-gray-600 font-poppins">Accounting settings page coming soon...</p>
-          </div>
-        );
+        return <AccountingDashboard initialTab="settings" onTabChange={(tab) => navigateToPage(tab as PageType)} />;
 
       // Reports
       case 'reports-dashboard':
@@ -188,6 +181,8 @@ function App() {
             <p className="text-gray-600 font-poppins">Integrations page coming soon...</p>
           </div>
         );
+      case 'settings-billing':
+        return <BillingInvoicesPage onBack={goBackToDashboard} />;
 
       // Team Management
       case 'team-overview':
@@ -206,12 +201,6 @@ function App() {
           />
         );
 
-      // Test Designs
-      case 'test-compact':
-      case 'test-minimal':
-      case 'test-animated':
-        return <TestDesigns />;
-
       default:
         return <DashboardContent />;
     }
@@ -227,7 +216,6 @@ function App() {
     if (page.startsWith('reports')) return 'reports';
     if (page.startsWith('chats')) return 'chats';
     if (page.startsWith('settings') || page === 'team-overview' || page === 'status-management') return 'settings';
-    if (page.startsWith('test')) return 'test';
     return 'dashboard';
   };
 
@@ -237,11 +225,8 @@ function App() {
         onNavigate={(page) => navigateToPage(page as PageType)} 
         currentPage={getCurrentActiveModule()}
       />
-      <div className="ml-16">
-        <TenantHeader />
-        <main className="p-8">
-          {renderContent()}
-        </main>
+      <div className="ml-16 min-h-screen p-6">
+        {renderContent()}
       </div>
       
       {/* Floating Chat Icon - Always visible */}

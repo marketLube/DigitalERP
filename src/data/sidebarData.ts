@@ -103,17 +103,8 @@ export const sidebarModules: SidebarModule[] = [
       { name: 'General', href: '/settings/general' },
       { name: 'Teams', href: '/settings/teams' },
       { name: 'Roles & Access', href: '/settings/roles' },
+      { name: 'Billing & Invoices', href: '/settings/billing' },
       { name: 'Integrations', href: '/settings/integrations' }
-    ]
-  },
-  {
-    id: 'test',
-    name: 'Test Designs',
-    icon: 'TestTube',
-    subRoutes: [
-      { name: 'Compact View', href: '/test/compact' },
-      { name: 'Minimal View', href: '/test/minimal' },
-      { name: 'Animated View', href: '/test/animated' }
     ]
   }
 ];

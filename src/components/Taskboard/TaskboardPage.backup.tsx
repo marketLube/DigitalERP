@@ -3,35 +3,8 @@ import { Search, Plus, Filter, Calendar, List, LayoutGrid, Eye, ToggleLeft, Togg
 import NotePad from './NotePad';
 import DateRangePicker, { DateRange } from '../Common/DateRangePicker';
 import IndividualEmployeeReport from '../Reports/IndividualEmployeeReport';
-import TeamReportsPage from '../Reports/TeamReportsPage';
-import TaskReportsPage from '../Reports/TaskReportsPage';
 import { useTenant } from '../../contexts/TenantContext';
 import { Team, MainStatus, SubStatus, TeamStatusConfig, defaultStatusConfigs } from '../../types/teams';
-// Redux imports for Phase 2-4 migration
-import { useAppSelector, useAppDispatch } from '../../store/hooks';
-import { 
-  addTask, editTask, removeTask, setTasks,
-  startDrag, endDrag, updateTaskStatus, moveTask,
-  enableRealTime, disableRealTime, optimisticUpdate 
-} from '../../store/slices/taskSlice';
-import { 
-  setActiveTab, setViewMode, setSearchQuery, setSelectedTeam,
-  setSelectedMainStatus, setSelectedAssignee, setSelectedPriority,
-  setSelectedProgress, setShowOverdue, setDateRange,
-  setShowEditModal, setSelectedTask, setPrefilledMainStatus, setPrefilledSubStatus,
-  setShowTeamDropdown, setShowStatusDropdown, setShowAssigneeDropdown, setShowPriorityDropdown,
-  openEditModal, closeEditModal, closeAllDropdowns, setReportsActiveTab
-} from '../../store/slices/uiSlice';
-import { 
-  selectAllTasks, selectTasksLoading, selectTasksError, selectReportsActiveTab,
-  selectDragState, selectActiveId, selectDraggedTask, selectIsOptimisticUpdate,
-  selectIsRealTimeEnabled, selectLastSync, selectTasksForDragDrop,
-  selectActiveTab, selectSearchQuery, selectSelectedTeam, selectSelectedMainStatus,
-  selectSelectedAssignee, selectViewMode, selectShowOverdue, selectSelectedPriority,
-  selectSelectedProgress, selectDateRange, selectShowTeamDropdown, selectShowStatusDropdown,
-  selectShowAssigneeDropdown, selectShowPriorityDropdown, selectShowEditModal, selectSelectedTask,
-  selectPrefilledMainStatus, selectPrefilledSubStatus
-} from '../../store/selectors';
 
 // DnD Kit imports
 import {
@@ -754,53 +727,17 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
 
 const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onTabChange }) => {
   const { user } = useTenant();
-  
-  // Redux store access for Phase 2 migration
-  const dispatch = useAppDispatch();
-  const reduxTasks = useAppSelector(selectAllTasks);
-  const tasksLoading = useAppSelector(selectTasksLoading);
-  const tasksError = useAppSelector(selectTasksError);
-  
-  // Phase 4: Drag and Drop Redux state
-  const dragState = useAppSelector(selectDragState);
-  const activeId = useAppSelector(selectActiveId);
-  const draggedTask = useAppSelector(selectDraggedTask);
-  const isOptimisticUpdate = useAppSelector(selectIsOptimisticUpdate);
-  
-  // Phase 4: Real-time update state
-  const isRealTimeEnabled = useAppSelector(selectIsRealTimeEnabled);
-  const lastSync = useAppSelector(selectLastSync);
-  
-  // Phase 4: Use Redux state for UI filters (replacing local state)
-  const activeTab = useAppSelector(selectActiveTab) || initialTab;
-  const searchQuery = useAppSelector(selectSearchQuery);
-  const selectedTeam = useAppSelector(selectSelectedTeam);
-  const selectedMainStatus = useAppSelector(selectSelectedMainStatus);
-  const selectedAssignee = useAppSelector(selectSelectedAssignee);
-  const viewMode = useAppSelector(selectViewMode);
-  const showOverdue = useAppSelector(selectShowOverdue);
-  const selectedPriority = useAppSelector(selectSelectedPriority);
-  const selectedProgress = useAppSelector(selectSelectedProgress);
-  const dateRange = useAppSelector(selectDateRange);
-  
-  // Phase 4: Use Redux state for dropdown states
-  const showTeamDropdown = useAppSelector(selectShowTeamDropdown);
-  const showStatusDropdown = useAppSelector(selectShowStatusDropdown);
-  const showAssigneeDropdown = useAppSelector(selectShowAssigneeDropdown);
-  const showPriorityDropdown = useAppSelector(selectShowPriorityDropdown);
-  
-  // Reports sub-navigation Redux state
-  const reportsActiveTab = useAppSelector(selectReportsActiveTab);
-  
-
+  const [activeTab, setActiveTab] = useState<'tasks' | 'notes' | 'my-tasks' | 'calendar' | 'reports' | 'settings'>(initialTab);
 
   // Sync activeTab with initialTab prop changes (sidebar navigation)
-  // Critical: This ensures direct sidebar navigation works properly
   useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+  React.useEffect(() => {
     if (initialTab) {
-      dispatch(setActiveTab(initialTab));
+      setActiveTab(initialTab);
     }
-  }, [initialTab, dispatch]);
+  }, [initialTab]);
 
   // Role-based access control
   const userRole = user?.role || 'employee';
@@ -811,15 +748,26 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
 
   // Enhanced tab switching function with useCallback for performance
   const handleTabSwitch = useCallback((tab: 'tasks' | 'notes') => {
-    // Update Redux state
-    dispatch(setActiveTab(tab));
+    setActiveTab(tab);
     if (onTabChange) {
       onTabChange(tab);
     }
-  }, [onTabChange, dispatch]);
-  
-  // Fallback local state for values not yet in Redux
+  }, [onTabChange]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTeam, setSelectedTeam] = useState('Video Production');
+  const [showTeamDropdown, setShowTeamDropdown] = useState(false);
+  const [selectedMainStatus, setSelectedMainStatus] = useState('Pre-Production');
+  const [selectedAssignee, setSelectedAssignee] = useState('All Assignees');
   const [selectedTimeframe, setSelectedTimeframe] = useState('All Time');
+  const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'calendar'>('kanban');
+  const [showOverdue, setShowOverdue] = useState(false);
+  const [selectedPriority, setSelectedPriority] = useState('All Priorities');
+  const [selectedProgress, setSelectedProgress] = useState('All Progress');
+  
+  // Enhanced dropdown states
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
+  const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
 
   // Update status options when team changes with useCallback for performance
   const handleTeamStatusUpdate = useCallback(() => {
@@ -840,9 +788,6 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
     handleTeamStatusUpdate();
   }, [handleTeamStatusUpdate]);
 
-  // Phase 2: Initialize Redux store with existing local tasks data (one-time sync)
-  // This will be moved after the tasks are defined
-
   // Status management state
   const [selectedTeamForStatus, setSelectedTeamForStatus] = useState('Video Production');
   const [editingMainStatus, setEditingMainStatus] = useState<MainStatus | null>(null);
@@ -852,13 +797,17 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
   const [draggedItem, setDraggedItem] = useState<any>(null);
   const [teamStatuses, setTeamStatuses] = useState<{ [teamName: string]: TeamStatusConfig }>({});
   
-  // Note: dateRange now comes from Redux state above
-  // Redux state for modal management  
-  const showEditModal = useAppSelector(selectShowEditModal);
-  const selectedTask = useAppSelector(selectSelectedTask);
+  // Date filtering state
+  const [dateRange, setDateRange] = useState<DateRange>({
+    preset: 'all',
+    startDate: '2020-01-01',
+    endDate: '2030-12-31'
+  });
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const prefilledMainStatus = useAppSelector(selectPrefilledMainStatus);
-  const prefilledSubStatus = useAppSelector(selectPrefilledSubStatus);
+  const [prefilledMainStatus, setPrefilledMainStatus] = useState<string>('');
+  const [prefilledSubStatus, setPrefilledSubStatus] = useState<string>('');
   
   // Employee Modal States (keeping for compatibility)
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
@@ -876,8 +825,8 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
   const [reportsViewMode, setReportsViewMode] = useState<'cards' | 'list'>('cards');
   
   // Drag and drop state
-  const [localActiveId, setLocalActiveId] = useState<UniqueIdentifier | null>(null);
-  const [localDraggedTask, setLocalDraggedTask] = useState<Task | null>(null);
+  const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
+  const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   
   // Configure sensors for drag and drop
   const sensors = useSensors(
@@ -1002,8 +951,6 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   };
 
-  // Phase 2: Gradually migrating this local state to Redux
-  // Current local state (will be replaced with Redux)
   const [tasks, setTasks] = useState<Task[]>([
     // VIDEO PRODUCTION TEAM TASKS (90 tasks)
     // Pre-Production - Scripting
@@ -2042,9 +1989,6 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
     }
   ]);
 
-  // Phase 2: Redux synchronization will be handled once type issues are resolved
-  // For now, CRUD operations update both local state and Redux in parallel
-
   // Enhanced teams with specific workflows and team members
   const teams = [
     { 
@@ -2256,56 +2200,38 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
   }, [filteredTasks]);
 
   const handleEditTask = useCallback((task: Task) => {
-    // Phase 3: Using Redux for modal state management
-    dispatch(openEditModal({ task }));
-    // Keep local state for now (Phase 3 transition)
     setSelectedTask(task);
     setPrefilledMainStatus('');
     setPrefilledSubStatus('');
     setShowEditModal(true);
-  }, [dispatch]);
+  }, []);
 
   const handleSaveTask = useCallback((updatedTask: Task) => {
     if (updatedTask.id) {
-      // Update local state (existing)
       setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
-      // Phase 2: Also update Redux store
-      dispatch(editTask(updatedTask));
     } else {
       const newTask = { ...updatedTask, id: Date.now().toString() };
-      // Update local state (existing)
       setTasks(prev => [...prev, newTask]);
-      // Phase 2: Also update Redux store
-      dispatch(addTask(newTask));
     }
-  }, [dispatch]);
+  }, []);
 
   const handleDeleteTask = useCallback((taskId: string) => {
-    // Update local state (existing)
     setTasks(prev => prev.filter(t => t.id !== taskId));
-    // Phase 2: Also update Redux store
-    dispatch(removeTask(taskId));
-  }, [dispatch]);
+  }, []);
 
   const handleCreateTask = useCallback(() => {
-    // Phase 3: Using Redux for modal state management
-    dispatch(openEditModal({}));
-    // Keep local state for now (Phase 3 transition)
     setSelectedTask(null);
     setPrefilledMainStatus('');
     setPrefilledSubStatus('');
     setShowEditModal(true);
-  }, [dispatch]);
+  }, []);
 
   const handleCreateTaskInStatus = useCallback((mainStatus: string, subStatus: string) => {
-    // Phase 3: Using Redux for modal state management
-    dispatch(openEditModal({ mainStatus, subStatus }));
-    // Keep local state for now (Phase 3 transition)
     setSelectedTask(null);
     setPrefilledMainStatus(mainStatus);
     setPrefilledSubStatus(subStatus);
     setShowEditModal(true);
-  }, [dispatch]);
+  }, []);
 
   const getPriorityColor = useCallback((priority: string) => {
     switch (priority) {
@@ -2386,35 +2312,23 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
     setCurrentDate(new Date());
   };
 
-  // Phase 4: Enhanced drag and drop event handlers with Redux integration
+  // Drag and drop event handlers for dnd-kit with performance optimizations
   const handleDndDragStart = useCallback((event: DragStartEvent) => {
     const { active } = event;
     const task = tasks.find(task => task.id === active.id);
-    
-    // Update Redux state
-    if (task) {
-      dispatch(startDrag({ taskId: active.id as string, task }));
-    }
-    
-    // Keep local state as fallback
-    setLocalActiveId(active.id);
-    setLocalDraggedTask(task || null);
-  }, [tasks, dispatch]);
+    setActiveId(active.id);
+    setDraggedTask(task || null);
+  }, [tasks]);
 
   const handleDndDragOver = useCallback((event: DragOverEvent) => {
-    // Phase 4: Could add visual feedback logic here
     // This could be used for visual feedback during drag
   }, []);
 
   const handleDndDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     
-    // Clear Redux drag state
-    dispatch(endDrag());
-    
-    // Clear local state
-    setLocalActiveId(null);
-    setLocalDraggedTask(null);
+    setActiveId(null);
+    setDraggedTask(null);
 
     if (!over) {
       return;
@@ -2430,47 +2344,15 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
       const taskToMove = tasks.find(task => task.id === activeTaskId);
       
       if (taskToMove && taskToMove.subStatus !== newSubStatus) {
-        // Phase 4: Optimistic update with Redux
-        dispatch(updateTaskStatus({ 
-          taskId: activeTaskId, 
-          newStatus: newSubStatus, 
-          optimistic: true 
-        }));
-        
-        // Update local state as well (dual-state approach)
+        // Update task status with optimized state update
         setTasks(prev => prev.map(task =>
           task.id === activeTaskId
             ? { ...task, subStatus: newSubStatus }
             : task
         ));
-        
-        // Phase 4: Real-time update (simulate API call)
-        if (isRealTimeEnabled) {
-          setTimeout(() => {
-            // In a real app, this would be an API call
-            console.log(`Task ${activeTaskId} moved to ${newSubStatus}`);
-          }, 100);
-        }
       }
     }
-  }, [tasks, dispatch, isRealTimeEnabled]);
-
-  // Phase 4: Real-time synchronization effect
-  useEffect(() => {
-    if (!isRealTimeEnabled) return;
-    
-    // Simulate real-time updates every 30 seconds
-    const syncInterval = setInterval(() => {
-      // In a real app, this would fetch latest data from server
-      console.log('Real-time sync check...');
-    }, 30000);
-
-    return () => clearInterval(syncInterval);
-  }, [isRealTimeEnabled]);
-
-  // Phase 4: Use Redux drag state with local fallback
-  const currentActiveId = activeId || localActiveId;
-  const currentDraggedTask = draggedTask || localDraggedTask;
+  }, [tasks]);
 
   const renderKanbanView = () => {
     const currentSubStatuses = selectedMainStatus === 'All Statuses' 
@@ -2551,9 +2433,9 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
         ))}
           </div>
           <DragOverlay>
-            {currentDraggedTask && (
+            {draggedTask && (
               <SortableTask
-                task={currentDraggedTask}
+                task={draggedTask}
                 onEdit={() => {}}
                 getPriorityColor={getPriorityColor}
                 getStatusColor={getStatusColor}
@@ -3293,7 +3175,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
                 <Users size={16} className="text-gray-600" />
                 <select
                   value={selectedTeam}
-                                        onChange={(e) => dispatch(setSelectedTeam(e.target.value))}
+                  onChange={(e) => setSelectedTeam(e.target.value)}
                   className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-poppins focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                                      <option value="All Teams">All Teams</option>
@@ -3311,7 +3193,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
                <AlertCircle size={16} className="text-gray-600" />
                <select
                  value={selectedMainStatus}
-                                       onChange={(e) => dispatch(setSelectedMainStatus(e.target.value))}
+                 onChange={(e) => setSelectedMainStatus(e.target.value)}
                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-poppins focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                >
                  <option value="All Statuses">All Status</option>
@@ -3328,7 +3210,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
               <User size={16} className="text-gray-600" />
               <select
                 value={selectedAssignee}
-                                      onChange={(e) => dispatch(setSelectedAssignee(e.target.value))}
+                onChange={(e) => setSelectedAssignee(e.target.value)}
                 className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-poppins focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="All">All Assignees</option>
@@ -3357,7 +3239,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
              <div className="flex items-center gap-2">
                <DateRangePicker
                  value={dateRange}
-                 onChange={(newDateRange) => dispatch(setDateRange(newDateRange))}
+                 onChange={setDateRange}
                />
              </div>
 
@@ -3368,7 +3250,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
                 type="text"
                 placeholder="Search tasks..."
                 value={searchQuery}
-                onChange={(e) => dispatch(setSearchQuery(e.target.value))}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm font-poppins focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-w-0"
                />
              </div>
@@ -3376,7 +3258,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
             {/* Overdue Toggle */}
             <div className="flex items-center gap-2">
               <button
-                onClick={() => dispatch(setShowOverdue(!showOverdue))}
+                onClick={() => setShowOverdue(!showOverdue)}
                 className={`px-3 py-2 rounded-lg text-sm font-poppins font-medium transition-colors duration-200 flex items-center gap-2 ${
                   showOverdue 
                     ? 'bg-red-100 text-red-700 border border-red-200' 
@@ -3505,7 +3387,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
             {/* Right Side - Tab Navigation */}
             <div className="flex items-center gap-1 bg-gray-50 rounded-lg p-1 flex-shrink-0">
             <button
-              onClick={() => dispatch(setActiveTab('tasks'))}
+              onClick={() => setActiveTab('tasks')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-poppins font-medium text-sm transition-all duration-300 ease-out transform ${
                 activeTab === 'tasks' 
                     ? 'bg-white text-blue-600 shadow-sm scale-105' 
@@ -3516,7 +3398,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
               All Tasks
             </button>
             <button
-                onClick={() => dispatch(setActiveTab('my-tasks'))}
+                onClick={() => setActiveTab('my-tasks')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-poppins font-medium text-sm transition-all duration-300 ease-out transform ${
                   activeTab === 'my-tasks' 
                     ? 'bg-white text-blue-600 shadow-sm scale-105' 
@@ -3527,7 +3409,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
                 My Tasks
             </button>
             <button
-                onClick={() => dispatch(setActiveTab('notes'))}
+                onClick={() => setActiveTab('notes')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-poppins font-medium text-sm transition-all duration-300 ease-out transform ${
                   activeTab === 'notes' 
                     ? 'bg-white text-blue-600 shadow-sm scale-105' 
@@ -3538,7 +3420,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
                 Notes
             </button>
             <button
-              onClick={() => dispatch(setActiveTab('calendar'))}
+              onClick={() => setActiveTab('calendar')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-poppins font-medium text-sm transition-all duration-300 ease-out transform ${
                 activeTab === 'calendar' 
                     ? 'bg-white text-blue-600 shadow-sm scale-105' 
@@ -3550,7 +3432,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
             </button>
             {(isAdmin || isManager) && (
               <button
-                onClick={() => dispatch(setActiveTab('reports'))}
+                onClick={() => setActiveTab('reports')}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-poppins font-medium text-sm transition-all duration-300 ease-out transform ${
                   activeTab === 'reports' 
                       ? 'bg-white text-blue-600 shadow-sm scale-105' 
@@ -3563,7 +3445,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
             )}
             {isAdmin && (
               <button
-                onClick={() => dispatch(setActiveTab('settings'))}
+                onClick={() => setActiveTab('settings')}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md font-poppins font-medium text-sm transition-all duration-300 ease-out transform ${
                   activeTab === 'settings' 
                       ? 'bg-white text-blue-600 shadow-sm scale-105' 
@@ -3587,7 +3469,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
             {(isAdmin || isManager) && (
               <div className="relative">
                 <button
-                                        onClick={() => dispatch(setShowTeamDropdown(!showTeamDropdown))}
+                  onClick={() => setShowTeamDropdown(!showTeamDropdown)}
                   className="flex items-center gap-3 bg-white border border-gray-200 hover:border-blue-300 rounded-xl px-4 py-2.5 transition-all duration-300 ease-out min-w-[200px] shadow-sm hover:shadow-md transform hover:scale-102 active:scale-98"
                 >
                   {/* Team Icon Circle */}
@@ -3617,7 +3499,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
                     {/* Backdrop */}
                     <div 
                       className="fixed inset-0 z-10 bg-black bg-opacity-5 transition-opacity duration-300" 
-                                              onClick={() => dispatch(setShowTeamDropdown(false))}
+                      onClick={() => setShowTeamDropdown(false)}
                     />
                     
                     {/* Dropdown Menu */}
@@ -3627,8 +3509,8 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
                           <button
                             key={team.id}
                             onClick={() => {
-                                                              dispatch(setSelectedTeam(team.name));
-                              dispatch(setShowTeamDropdown(false));
+                              setSelectedTeam(team.name);
+                              setShowTeamDropdown(false);
                             }}
                             className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-300 ease-out text-left transform hover:scale-102 ${
                               selectedTeam === team.name 
@@ -3671,7 +3553,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
             {/* Enhanced Main Status Dropdown */}
               <div className="relative">
               <button
-                                      onClick={() => dispatch(setShowStatusDropdown(!showStatusDropdown))}
+                onClick={() => setShowStatusDropdown(!showStatusDropdown)}
                 className="flex items-center gap-2 bg-white border border-gray-200 hover:border-blue-300 rounded-lg px-3 py-2 transition-all duration-200 min-w-[140px] shadow-sm hover:shadow-md"
               >
                 {/* Status Icon */}
@@ -3698,7 +3580,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
                   {/* Backdrop */}
                   <div 
                     className="fixed inset-0 z-10 bg-black bg-opacity-5 transition-opacity duration-300" 
-                                            onClick={() => dispatch(setShowStatusDropdown(false))}
+                    onClick={() => setShowStatusDropdown(false)}
                   />
                   
                   {/* Dropdown Menu */}
@@ -3708,8 +3590,8 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
                 <button
                           key={status}
                           onClick={() => {
-                                                          dispatch(setSelectedMainStatus(status));
-                            dispatch(setShowStatusDropdown(false));
+                            setSelectedMainStatus(status);
+                            setShowStatusDropdown(false);
                           }}
                           className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-300 ease-out text-left transform hover:scale-102 ${
                             selectedMainStatus === status 
@@ -3749,7 +3631,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
             {(isAdmin || isManager) && (
                 <div className="relative">
                 <button
-                                        onClick={() => dispatch(setShowAssigneeDropdown(!showAssigneeDropdown))}
+                  onClick={() => setShowAssigneeDropdown(!showAssigneeDropdown)}
                   className="flex items-center gap-2 bg-white border border-gray-200 hover:border-blue-300 rounded-lg px-3 py-2 transition-all duration-200 min-w-[130px] shadow-sm hover:shadow-md"
                 >
                   {/* Assignee Icon */}
@@ -3776,7 +3658,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
                     {/* Backdrop */}
                     <div 
                       className="fixed inset-0 z-10 bg-black bg-opacity-5 transition-opacity duration-300" 
-                                              onClick={() => dispatch(setShowAssigneeDropdown(false))}
+                      onClick={() => setShowAssigneeDropdown(false)}
                     />
                     
                     {/* Dropdown Menu */}
@@ -3786,8 +3668,8 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
                           <button
                           key={assignee}
                           onClick={() => {
-                                                              dispatch(setSelectedAssignee(assignee));
-                              dispatch(setShowAssigneeDropdown(false));
+                              setSelectedAssignee(assignee);
+                              setShowAssigneeDropdown(false);
                             }}
                             className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-300 ease-out text-left transform hover:scale-102 ${
                               selectedAssignee === assignee 
@@ -3827,7 +3709,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
             {/* Enhanced Priority Dropdown */}
             <div className="relative">
                               <button
-                                        onClick={() => dispatch(setShowPriorityDropdown(!showPriorityDropdown))}
+                  onClick={() => setShowPriorityDropdown(!showPriorityDropdown)}
                   className="flex items-center gap-2 bg-white border border-gray-200 hover:border-blue-300 rounded-lg px-3 py-2 transition-all duration-200 min-w-[120px] shadow-sm hover:shadow-md"
                 >
                 {/* Priority Icon */}
@@ -3858,7 +3740,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
                   {/* Backdrop */}
                   <div 
                     className="fixed inset-0 z-10 bg-black bg-opacity-5 transition-opacity duration-300" 
-                                            onClick={() => dispatch(setShowPriorityDropdown(false))}
+                    onClick={() => setShowPriorityDropdown(false)}
                   />
                   
                   {/* Dropdown Menu */}
@@ -3868,8 +3750,8 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
                               <button
                           key={priority}
                                 onClick={() => {
-                                                          dispatch(setSelectedPriority(priority));
-                            dispatch(setShowPriorityDropdown(false));
+                            setSelectedPriority(priority);
+                            setShowPriorityDropdown(false);
                           }}
                           className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-300 ease-out text-left transform hover:scale-102 ${
                             selectedPriority === priority 
@@ -3917,7 +3799,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
             <div className="flex items-center gap-2">
               <DateRangePicker
                 value={dateRange}
-                onChange={(newDateRange) => dispatch(setDateRange(newDateRange))}
+                onChange={setDateRange}
               />
           </div>
 
@@ -3929,7 +3811,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
                   type="text"
                   placeholder="Search tasks..."
                   value={searchQuery}
-                  onChange={(e) => dispatch(setSearchQuery(e.target.value))}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm"
                 />
                   </div>
@@ -3938,7 +3820,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
             {/* View Mode Toggle */}
             <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
               <button
-                onClick={() => dispatch(setViewMode('kanban'))}
+                onClick={() => setViewMode('kanban')}
                 className={`p-2 rounded-md transition-colors duration-200 ${
                   viewMode === 'kanban' 
                     ? 'bg-white text-blue-600 shadow-sm' 
@@ -3949,7 +3831,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
                 <LayoutGrid size={16} />
               </button>
               <button
-                onClick={() => dispatch(setViewMode('list'))}
+                onClick={() => setViewMode('list')}
                 className={`p-2 rounded-md transition-colors duration-200 ${
                   viewMode === 'list' 
                     ? 'bg-white text-blue-600 shadow-sm' 
@@ -3960,7 +3842,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
                 <List size={16} />
               </button>
               <button
-                onClick={() => dispatch(setViewMode('calendar'))}
+                onClick={() => setViewMode('calendar')}
                 className={`p-2 rounded-md transition-colors duration-200 ${
                   viewMode === 'calendar' 
                     ? 'bg-white text-blue-600 shadow-sm' 
@@ -3974,7 +3856,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
 
             {/* Overdue Toggle */}
             <button
-              onClick={() => dispatch(setShowOverdue(!showOverdue))}
+              onClick={() => setShowOverdue(!showOverdue)}
               className={`px-2 py-2 rounded-lg text-xs font-poppins font-medium transition-colors duration-200 flex items-center gap-1.5 ${
                 showOverdue 
                   ? 'bg-red-100 text-red-700 border border-red-200' 
@@ -4009,9 +3891,9 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
           >
             {viewMode === 'kanban' ? renderKanbanView() : renderListView()}
             <DragOverlay>
-              {currentActiveId ? (
+              {activeId ? (
                 <SortableTask
-                  task={tasks.find(task => task.id === currentActiveId)!}
+                  task={tasks.find(task => task.id === activeId)!}
                   onEdit={handleEditTask}
                   getPriorityColor={getPriorityColor}
                   getStatusColor={getStatusColor}
@@ -4038,9 +3920,9 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
           >
             {viewMode === 'kanban' ? renderKanbanView() : renderListView()}
             <DragOverlay>
-              {currentActiveId ? (
+              {activeId ? (
                 <SortableTask
-                  task={tasks.find(task => task.id === currentActiveId)!}
+                  task={tasks.find(task => task.id === activeId)!}
                   onEdit={handleEditTask}
                   getPriorityColor={getPriorityColor}
                   getStatusColor={getStatusColor}
@@ -4053,62 +3935,12 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
 
         {activeTab === 'calendar' && renderCalendarView()}
 
-                {activeTab === 'reports' && !showIndividualReport && (
+        {activeTab === 'reports' && !showIndividualReport && (
           <div className="space-y-6">
-            {/* Reports Tab Navigation */}
-            <div className="bg-white rounded-xl border border-gray-200 p-1">
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => dispatch(setReportsActiveTab('individual'))}
-                  className={`px-4 py-2 rounded-lg font-poppins font-medium text-sm transition-colors duration-200 ${
-                    reportsActiveTab === 'individual'
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                >
-                  Individual Reports
-                </button>
-                <button
-                  onClick={() => dispatch(setReportsActiveTab('team'))}
-                  className={`px-4 py-2 rounded-lg font-poppins font-medium text-sm transition-colors duration-200 ${
-                    reportsActiveTab === 'team'
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                >
-                  Team Reports
-                </button>
-                <button
-                  onClick={() => dispatch(setReportsActiveTab('task'))}
-                  className={`px-4 py-2 rounded-lg font-poppins font-medium text-sm transition-colors duration-200 ${
-                    reportsActiveTab === 'task'
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                >
-                  Task Reports
-                </button>
-              </div>
-            </div>
-
-            {/* Reports Content Based on Active Tab */}
-            {reportsActiveTab === 'individual' && (
-              <IndividualEmployeeReport 
-                employee={selectedEmployeeForReport || 'Althameem'} 
-                onBack={() => {}} 
-                allTasks={tasks} 
-              />
-            )}
-            
-            {reportsActiveTab === 'team' && (
-              <TeamReportsPage onBack={() => {}} />
-            )}
-            
-            {reportsActiveTab === 'task' && (
-              <TaskReportsPage onBack={() => {}} />
-            )}
-          </div>
-        )}
+            {/* Reports content */}
+            <h1 className="text-2xl font-poppins font-bold text-gray-900">Team Performance Reports</h1>
+                  </div>
+                )}
 
         {activeTab === 'reports' && showIndividualReport && selectedEmployeeForReport && (
           <div className="space-y-6">
@@ -4123,7 +3955,7 @@ const TaskboardPage: React.FC<TaskboardPageProps> = ({ initialTab = 'tasks', onT
       {/* Edit Task Modal */}
       <EditTaskModal
         isOpen={showEditModal}
-        onClose={() => dispatch(setShowEditModal(false))}
+        onClose={() => setShowEditModal(false)}
         task={selectedTask}
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}

@@ -7,6 +7,7 @@ import {
   PieChart, LineChart, Building, Shield, Star, Heart, Coffee, BookOpen
 } from 'lucide-react';
 import SmartRecommendationsPage from '../SmartRecommendations/SmartRecommendationsPage';
+import ReduxTest from '../Redux/ReduxTest';
 
 interface DashboardContentProps {
   defaultTab?: 'overview' | 'smart-recommendations' | 'team-progress' | 'revenue' | 'quick-stats';
@@ -315,6 +316,11 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ defaultTab = 'overv
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Redux Integration Test - Phase 1 Validation */}
+      <div className="mb-8">
+        <ReduxTest />
       </div>
 
       {/* Smart Recommendations Section */}

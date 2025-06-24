@@ -132,6 +132,8 @@ const SidebarFlyout: React.FC<SidebarFlyoutProps> = ({
         onNavigate('settings-teams');
       } else if (route.href === '/settings/roles') {
         onNavigate('settings-roles');
+      } else if (route.href === '/settings/billing') {
+        onNavigate('settings-billing');
       } else if (route.href === '/settings/integrations') {
         onNavigate('settings-integrations');
       }

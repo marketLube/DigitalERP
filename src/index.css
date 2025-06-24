@@ -38,29 +38,113 @@
   background: rgb(156, 163, 175);
 }
 
-/* Ultra-responsive horizontal scrolling - no smoothing, pure performance */
+/* Horizontal scrolling for kanban board */
+.kanban-wrapper {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 180px);
+  overflow: hidden;
+}
+
 .kanban-container {
   width: 100%;
-  position: relative;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-behavior: auto; /* Disable smooth scroll for instant response */
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
-  /* Hardware acceleration for maximum performance */
-  transform: translateZ(0);
-  backface-visibility: hidden;
+  height: 100%;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
+  display: flex !important;
+  padding: 0 1.5rem 1.5rem 1.5rem !important;
+  /* Optimize for smoother scrolling - enhanced performance */
   will-change: scroll-position;
+  transform: translateZ(0);
+  -webkit-font-smoothing: antialiased;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto; /* Disable smooth scrolling for better performance */
 }
 
 .kanban-container::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
+  height: 8px;
+  background: transparent;
 }
 
-/* Optimize child elements for scrolling performance */
+.kanban-container::-webkit-scrollbar-track {
+  background: rgba(243, 244, 246, 0.5);
+  border-radius: 10px;
+  margin: 0 1rem;
+}
+
+.kanban-container::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.4);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.kanban-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.6);
+  background-clip: content-box;
+}
+
+/* Scroll shadow indicators for kanban */
+.kanban-wrapper::before,
+.kanban-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 24px; /* Account for scrollbar */
+  width: 20px;
+  z-index: 10;
+  pointer-events: none;
+  transition: opacity 0.2s ease-out;
+}
+
+.kanban-wrapper::before {
+  left: 0;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.8), transparent);
+  opacity: 0;
+}
+
+.kanban-wrapper::after {
+  right: 0;
+  background: linear-gradient(to left, rgba(255, 255, 255, 0.8), transparent);
+  opacity: 0;
+}
+
+.kanban-wrapper.scroll-left::before {
+  opacity: 1;
+}
+
+.kanban-wrapper.scroll-right::after {
+  opacity: 1;
+}
+
+/* Column styling for horizontal scrolling with performance optimizations */
 .kanban-container > * {
-  transform: translateZ(0); /* Force hardware acceleration */
+  flex-shrink: 0 !important;
+  min-width: 20rem !important;
+  width: 20rem !important;
+  margin-right: 1.5rem !important;
+  /* Performance optimizations for column rendering */
+  contain: layout style paint;
+  will-change: auto;
+}
+
+.kanban-container > *:last-child {
+  margin-right: 0 !important;
+}
+
+/* Performance optimizations for task cards */
+.task-card {
+  contain: layout;
+  will-change: auto;
   backface-visibility: hidden;
+}
+
+/* Optimize scrollable areas within columns */
+.overflow-y-auto.scrollbar-thin {
+  contain: strict;
+  scroll-behavior: auto;
 }
 
 /* Animation for smooth transitions */

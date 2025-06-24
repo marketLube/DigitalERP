@@ -97,8 +97,14 @@ export const defaultStatusConfigs: { [teamName: string]: Partial<TeamStatusConfi
         teamId: 'video-production',
         subStatuses: [
           { id: 'vp-post-editing', name: 'Editing', color: '#a78bfa', order: 1, mainStatusId: 'vp-post' },
-          { id: 'vp-post-final', name: 'Final Review', color: '#7c3aed', order: 2, mainStatusId: 'vp-post' },
-          { id: 'vp-post-delivered', name: 'Delivered', color: '#10b981', order: 3, mainStatusId: 'vp-post', isLast: true }
+          { id: 'vp-post-color', name: 'Color Correction', color: '#9333ea', order: 2, mainStatusId: 'vp-post' },
+          { id: 'vp-post-audio', name: 'Audio Mixing', color: '#8b5cf6', order: 3, mainStatusId: 'vp-post' },
+          { id: 'vp-post-effects', name: 'Visual Effects', color: '#7c3aed', order: 4, mainStatusId: 'vp-post' },
+          { id: 'vp-post-render', name: 'Rendering', color: '#6b21a8', order: 5, mainStatusId: 'vp-post' },
+          { id: 'vp-post-review', name: 'Client Review', color: '#581c87', order: 6, mainStatusId: 'vp-post' },
+          { id: 'vp-post-revisions', name: 'Revisions', color: '#4c1d95', order: 7, mainStatusId: 'vp-post' },
+          { id: 'vp-post-final', name: 'Final Approval', color: '#7c3aed', order: 8, mainStatusId: 'vp-post' },
+          { id: 'vp-post-delivered', name: 'Delivered', color: '#10b981', order: 9, mainStatusId: 'vp-post', isLast: true }
         ]
       }
     ]
