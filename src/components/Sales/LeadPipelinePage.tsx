@@ -669,6 +669,8 @@ const LeadPipelinePage: React.FC<LeadPipelinePageProps> = ({ defaultTab = 'pipel
   const [selectedModal, setSelectedModal] = useState<Lead | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [cardMode, setCardMode] = useState<'colorful' | 'minimal'>('colorful');
+  const [minProbability, setMinProbability] = useState<number>(0);
+  const [maxProbability, setMaxProbability] = useState<number>(100);
   const kanbanContainerRef = useRef<HTMLDivElement>(null);
 
   // Date filtering state
@@ -1599,6 +1601,7 @@ const LeadPipelinePage: React.FC<LeadPipelinePageProps> = ({ defaultTab = 'pipel
                           lead.contactPerson.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesPriority = selectedPriority === 'All' || lead.priority === selectedPriority;
       const matchesAssignee = selectedAssignee === 'All' || lead.assignee === selectedAssignee;
+      const matchesProbability = lead.probability >= minProbability && lead.probability <= maxProbability;
       
       // Date filtering based on createdDate
       const leadDate = new Date(lead.createdDate);
@@ -1606,9 +1609,9 @@ const LeadPipelinePage: React.FC<LeadPipelinePageProps> = ({ defaultTab = 'pipel
       const endDate = new Date(dateRange.endDate);
       const matchesDateRange = leadDate >= startDate && leadDate <= endDate;
       
-      return matchesSearch && matchesPriority && matchesAssignee && matchesDateRange;
+      return matchesSearch && matchesPriority && matchesAssignee && matchesProbability && matchesDateRange;
     });
-  }, [mockLeads, searchQuery, selectedPriority, selectedAssignee, dateRange]);
+  }, [mockLeads, searchQuery, selectedPriority, selectedAssignee, minProbability, maxProbability, dateRange]);
 
   const leadsByStatus = useMemo(() => {
     return statuses.reduce((acc, status) => {
@@ -1794,58 +1797,94 @@ const LeadPipelinePage: React.FC<LeadPipelinePageProps> = ({ defaultTab = 'pipel
         <>
 
 
-          {/* Filters */}
-          <div className="bg-white p-4 rounded-xl border border-gray-200 mb-6 shadow-sm">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div className="flex flex-col sm:flex-row gap-3 flex-1">
+          {/* Compact Filter Bar - Taskboard Style */}
+          <div className="bg-white p-3 rounded-xl border border-gray-200 mb-4 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex flex-col sm:flex-row gap-2 flex-1">
                 {/* Search */}
-                <div className="relative flex-1 max-w-md">
-                  <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <div className="relative flex-1 max-w-xs">
+                  <Search size={14} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   <input
                     type="text"
                     placeholder="Search leads..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm"
+                    className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm"
                   />
                 </div>
 
-                {/* Date Range Filter */}
-                <DateRangePicker
-                  value={dateRange}
-                  onChange={setDateRange}
-                  className="min-w-48"
-                />
+                {/* Compact Filters Row */}
+                <div className="flex items-center gap-2">
+                  {/* Date Range Filter */}
+                  <DateRangePicker
+                    value={dateRange}
+                    onChange={setDateRange}
+                    className="min-w-32"
+                  />
 
-                {/* Priority Filter */}
-                <select
-                  value={selectedPriority}
-                  onChange={(e) => setSelectedPriority(e.target.value)}
-                  className="px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white"
-                >
-                  {priorities.map(priority => (
-                    <option key={priority} value={priority}>
-                      {priority === 'All' ? 'All Priority' : priority}
-                    </option>
-                  ))}
-                </select>
+                  {/* Priority Filter */}
+                  <select
+                    value={selectedPriority}
+                    onChange={(e) => setSelectedPriority(e.target.value)}
+                    className="px-2 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white min-w-28"
+                  >
+                    {priorities.map(priority => (
+                      <option key={priority} value={priority}>
+                        {priority === 'All' ? 'All' : priority}
+                      </option>
+                    ))}
+                  </select>
 
-                {/* Assignee Filter */}
-                <select
-                  value={selectedAssignee}
-                  onChange={(e) => setSelectedAssignee(e.target.value)}
-                  className="px-3 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white"
-                >
-                  {assignees.map(assignee => (
-                    <option key={assignee} value={assignee}>
-                      {assignee === 'All' ? 'All Assignees' : assignee}
-                    </option>
-                  ))}
-                </select>
+                  {/* Assignee Filter */}
+                  <select
+                    value={selectedAssignee}
+                    onChange={(e) => setSelectedAssignee(e.target.value)}
+                    className="px-2 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white min-w-32"
+                  >
+                    {assignees.map(assignee => (
+                      <option key={assignee} value={assignee}>
+                        {assignee === 'All' ? 'All' : assignee.split(' ')[0]}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* Probability Range Filter */}
+                  <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg bg-white">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={minProbability}
+                      onChange={(e) => setMinProbability(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                      className="w-12 text-xs font-poppins text-center border-none focus:outline-none"
+                      placeholder="0"
+                    />
+                    <span className="text-gray-400 text-xs">%</span>
+                    <div className="w-16 h-1 bg-gray-200 rounded-full relative">
+                      <div 
+                        className="h-full bg-blue-500 rounded-full" 
+                        style={{ 
+                          width: `${maxProbability - minProbability}%`,
+                          marginLeft: `${minProbability}%`
+                        }}
+                      />
+                    </div>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={maxProbability}
+                      onChange={(e) => setMaxProbability(Math.min(100, Math.max(0, parseInt(e.target.value) || 100)))}
+                      className="w-12 text-xs font-poppins text-center border-none focus:outline-none"
+                      placeholder="100"
+                    />
+                    <span className="text-gray-400 text-xs">%</span>
+                  </div>
+                </div>
               </div>
 
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-poppins font-medium transition-colors duration-200 flex items-center gap-2">
-                <Plus size={16} />
+              <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-poppins font-medium transition-colors duration-200 flex items-center gap-1.5 text-sm">
+                <Plus size={14} />
                 Add Lead
               </button>
             </div>
