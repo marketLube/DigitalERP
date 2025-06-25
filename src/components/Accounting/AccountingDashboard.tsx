@@ -37,6 +37,7 @@ const AccountingDashboard: React.FC<AccountingDashboardProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'invoices' | 'daybook' | 'profit-loss' | 'tax-compliance' | 'settings'>(initialTab);
   const [selectedPeriod, setSelectedPeriod] = useState('This Month');
+  const [shouldOpenCreateInvoice, setShouldOpenCreateInvoice] = useState(false);
 
   // Sync activeTab with initialTab prop changes
   useEffect(() => {
@@ -186,7 +187,10 @@ const AccountingDashboard: React.FC<AccountingDashboardProps> = ({
       description: 'Generate new invoice',
       icon: FileText,
       color: 'bg-blue-500',
-      onClick: () => handleTabSwitch('invoices')
+      onClick: () => {
+        handleTabSwitch('invoices');
+        setShouldOpenCreateInvoice(true);
+      }
     },
     {
       title: 'Day Book Entry',
@@ -490,7 +494,19 @@ const AccountingDashboard: React.FC<AccountingDashboardProps> = ({
       <div>
         {activeTab === 'overview' && renderOverviewTab()}
         {activeTab === 'daybook' && <DayBookPage onBack={() => handleTabSwitch('overview')} showHeader={false} />}
-        {activeTab === 'invoices' && <InvoicesPage onBack={() => handleTabSwitch('overview')} showHeader={false} onNavigate={onNavigate} />}
+        {activeTab === 'invoices' && (
+        <InvoicesPage 
+          onBack={() => handleTabSwitch('overview')} 
+          showHeader={false} 
+          onNavigate={onNavigate}
+          shouldOpenCreateInvoice={shouldOpenCreateInvoice}
+          onCreateInvoiceModalChange={(isOpen) => {
+            if (!isOpen) {
+              setShouldOpenCreateInvoice(false);
+            }
+          }}
+        />
+      )}
         {activeTab === 'tax-compliance' && <TaxCompliancePage onBack={() => handleTabSwitch('overview')} showHeader={false} />}
         {activeTab === 'profit-loss' && <ProfitLossPage onBack={() => handleTabSwitch('overview')} showHeader={false} />}
         {activeTab === 'settings' && (

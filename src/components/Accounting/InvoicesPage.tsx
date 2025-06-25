@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { FileText, Search, Filter, Plus, Download, Eye, Edit3, Trash2, Send, DollarSign, Calendar, Clock, CheckCircle, AlertCircle, Copy, ChevronDown, LayoutGrid, List, ToggleLeft, ToggleRight, DollarSign as Currency, X, ArrowLeft, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { FileText, Search, Filter, Plus, Download, Eye, Edit3, Trash2, Send, DollarSign, Calendar, Clock, CheckCircle, AlertCircle, Copy, ChevronDown, LayoutGrid, List, ToggleLeft, ToggleRight, DollarSign as Currency, X, ArrowLeft, ArrowRight, Settings } from 'lucide-react';
 import DateRangePicker, { DateRange } from '../Common/DateRangePicker';
+import NewInvoicePage from './NewInvoicePage';
 
 
 interface Invoice {
@@ -30,9 +31,11 @@ interface InvoicesPageProps {
   onBack: () => void;
   showHeader?: boolean;
   onNavigate?: (page: string) => void;
+  shouldOpenCreateInvoice?: boolean;
+  onCreateInvoiceModalChange?: (isOpen: boolean) => void;
 }
 
-const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack, showHeader = true, onNavigate }) => {
+const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack, showHeader = true, onNavigate, shouldOpenCreateInvoice, onCreateInvoiceModalChange }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [selectedClient, setSelectedClient] = useState('All Clients');
@@ -49,8 +52,26 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack, showHeader = true, 
   
   // Create Invoice State
   const [showCreateInvoice, setShowCreateInvoice] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  
+  // Status Management State
+  const [showStatusDropdown, setShowStatusDropdown] = useState<string | null>(null);
+  const statusDropdownRef = useRef<HTMLDivElement>(null);
 
-  const invoices: Invoice[] = [
+  // Handle external request to open create invoice modal
+  useEffect(() => {
+    if (shouldOpenCreateInvoice) {
+      setShowCreateInvoice(true);
+    }
+  }, [shouldOpenCreateInvoice]);
+
+  // Notify parent when modal state changes
+  useEffect(() => {
+    onCreateInvoiceModalChange?.(showCreateInvoice);
+  }, [showCreateInvoice, onCreateInvoiceModalChange]);
+  
+  // Invoices State
+  const [invoices, setInvoices] = useState<Invoice[]>([
     {
       id: '1',
       invoiceNumber: 'INV-2024-001',
@@ -134,19 +155,35 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack, showHeader = true, 
         { id: '2', description: 'Frontend Dashboard', quantity: 1, rate: 10000, amount: 10000 }
       ]
     }
-  ];
+  ]);
 
   const statuses = ['All', 'Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled'];
-  const clients = ['All Clients', ...Array.from(new Set(invoices.map(inv => inv.clientName)))];
+  
+  // Update selectedInvoice when invoices change (for status updates in modal)
+  useEffect(() => {
+    if (selectedInvoice) {
+      const updatedInvoice = invoices.find(inv => inv.id === selectedInvoice.id);
+      if (updatedInvoice) {
+        setSelectedInvoice(updatedInvoice);
+      }
+    }
+  }, [invoices, selectedInvoice]);
+  
+  // Memoize clients array to update when invoices change
+  const clients = useMemo(() => {
+    return ['All Clients', ...Array.from(new Set(invoices.map(inv => inv.clientName)))];
+  }, [invoices]);
+  
   const amountRanges = [
     'All Amounts',
-    'Under $5,000',
-    '$5,000 - $10,000', 
-    '$10,000 - $20,000',
-    'Over $20,000'
+    'Under ₹5,000',
+    '₹5,000 - ₹10,000', 
+    '₹10,000 - ₹20,000',
+    'Over ₹20,000'
   ];
 
-  const filteredInvoices = invoices.filter(invoice => {
+  // Memoize filtered invoices to update when dependencies change
+  const filteredInvoices = useMemo(() => invoices.filter(invoice => {
     const matchesSearch = invoice.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          invoice.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          invoice.clientEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -159,10 +196,10 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack, showHeader = true, 
     
     const matchesAmountRange = (() => {
       if (selectedAmountRange === 'All Amounts') return true;
-      if (selectedAmountRange === 'Under $5,000') return invoice.amount < 5000;
-      if (selectedAmountRange === '$5,000 - $10,000') return invoice.amount >= 5000 && invoice.amount <= 10000;
-      if (selectedAmountRange === '$10,000 - $20,000') return invoice.amount >= 10000 && invoice.amount <= 20000;
-      if (selectedAmountRange === 'Over $20,000') return invoice.amount > 20000;
+      if (selectedAmountRange === 'Under ₹5,000') return invoice.amount < 5000;
+      if (selectedAmountRange === '₹5,000 - ₹10,000') return invoice.amount >= 5000 && invoice.amount <= 10000;
+      if (selectedAmountRange === '₹10,000 - ₹20,000') return invoice.amount >= 10000 && invoice.amount <= 20000;
+      if (selectedAmountRange === 'Over ₹20,000') return invoice.amount > 20000;
       return true;
     })();
 
@@ -177,7 +214,7 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack, showHeader = true, 
     const matchesOverdue = showOverdue ? invoice.status === 'overdue' : true;
     
     return matchesSearch && matchesStatus && matchesClient && matchesAmountRange && matchesDateRange && matchesOverdue;
-  });
+  }), [invoices, searchQuery, selectedStatus, selectedClient, selectedAmountRange, dateRange, showOverdue]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -201,9 +238,30 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack, showHeader = true, 
     }
   };
 
-  const totalAmount = filteredInvoices.reduce((sum, invoice) => sum + invoice.amount, 0);
-  const paidAmount = filteredInvoices.filter(inv => inv.status === 'paid').reduce((sum, invoice) => sum + invoice.amount, 0);
-  const pendingAmount = filteredInvoices.filter(inv => inv.status === 'sent' || inv.status === 'overdue').reduce((sum, invoice) => sum + invoice.amount, 0);
+  // Memoize calculated amounts to update when filteredInvoices change
+  const totalAmount = useMemo(() => filteredInvoices.reduce((sum, invoice) => sum + invoice.amount, 0), [filteredInvoices]);
+  const paidAmount = useMemo(() => filteredInvoices.filter(inv => inv.status === 'paid').reduce((sum, invoice) => sum + invoice.amount, 0), [filteredInvoices]);
+  const pendingAmount = useMemo(() => filteredInvoices.filter(inv => inv.status === 'sent' || inv.status === 'overdue').reduce((sum, invoice) => sum + invoice.amount, 0), [filteredInvoices]);
+
+  // Debug: Log invoice count changes
+  useEffect(() => {
+    console.log('🔍 Invoice count changed:', invoices.length);
+    console.log('🔍 Current invoices:', invoices.map(inv => ({ id: inv.id, number: inv.invoiceNumber, client: inv.clientName })));
+  }, [invoices]);
+
+  // Close status dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target as Node)) {
+        setShowStatusDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleViewInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
@@ -211,29 +269,216 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack, showHeader = true, 
   };
 
   const handleEditInvoice = (invoice: Invoice) => {
-    console.log('Edit invoice:', invoice);
+    // Set the selected invoice and open create modal in edit mode
+    setSelectedInvoice(invoice);
+    setShowCreateInvoice(true);
+    console.log('✏️ Opening invoice for editing:', invoice.invoiceNumber);
   };
 
   const handleDeleteInvoice = (invoiceId: string) => {
-    if (window.confirm('Are you sure you want to delete this invoice?')) {
-      console.log('Delete invoice:', invoiceId);
+    const invoice = invoices.find(inv => inv.id === invoiceId);
+    if (window.confirm(`Are you sure you want to delete invoice ${invoice?.invoiceNumber}? This action cannot be undone.`)) {
+      setInvoices(prevInvoices => prevInvoices.filter(inv => inv.id !== invoiceId));
+      
+      // Close modal if the deleted invoice was being viewed
+      if (selectedInvoice?.id === invoiceId) {
+        setShowInvoiceModal(false);
+        setSelectedInvoice(null);
+      }
+      
+      console.log('🗑️ Invoice deleted:', invoice?.invoiceNumber);
+      
+      // Show success message (you can replace with a toast notification)
+      alert(`Invoice ${invoice?.invoiceNumber} has been deleted successfully.`);
     }
   };
 
   const handleSendInvoice = (invoiceId: string) => {
-    console.log('Send invoice:', invoiceId);
+    const invoice = invoices.find(inv => inv.id === invoiceId);
+    if (!invoice) return;
+
+    // Update invoice status to 'sent'
+    setInvoices(prevInvoices => 
+      prevInvoices.map(inv => 
+        inv.id === invoiceId 
+          ? { ...inv, status: 'sent' as const }
+          : inv
+      )
+    );
+
+    console.log('📧 Invoice sent:', invoice.invoiceNumber);
+    
+    // Show success message (you can replace with a toast notification)
+    alert(`Invoice ${invoice.invoiceNumber} has been sent to ${invoice.clientName} (${invoice.clientEmail})`);
+  };
+
+  const handleDownloadPDF = (invoiceId: string) => {
+    const invoice = invoices.find(inv => inv.id === invoiceId);
+    if (!invoice) return;
+
+    console.log('📄 Downloading PDF for:', invoice.invoiceNumber);
+    
+    // In a real application, this would generate and download a PDF
+    // For now, we'll show a message
+    alert(`PDF download started for ${invoice.invoiceNumber}. In a real app, this would generate and download the PDF file.`);
+  };
+
+  const handleDuplicateInvoice = (invoice: Invoice) => {
+    const duplicatedInvoice: Invoice = {
+      ...invoice,
+      id: `inv-${Date.now()}`,
+      invoiceNumber: `${invoice.invoiceNumber}-COPY`,
+      status: 'draft',
+      issueDate: new Date().toISOString().split('T')[0],
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    };
+
+    setInvoices(prevInvoices => [duplicatedInvoice, ...prevInvoices]);
+    console.log('📋 Invoice duplicated:', duplicatedInvoice.invoiceNumber);
+    
+    alert(`Invoice duplicated as ${duplicatedInvoice.invoiceNumber}`);
+  };
+
+  const handleMarkAsPaid = (invoiceId: string) => {
+    const invoice = invoices.find(inv => inv.id === invoiceId);
+    if (!invoice) return;
+
+    setInvoices(prevInvoices => 
+      prevInvoices.map(inv => 
+        inv.id === invoiceId 
+          ? { ...inv, status: 'paid' as const }
+          : inv
+      )
+    );
+
+    console.log('💰 Invoice marked as paid:', invoice.invoiceNumber);
+    alert(`Invoice ${invoice.invoiceNumber} has been marked as paid!`);
+  };
+
+  const handleStatusChange = (invoiceId: string, newStatus: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled') => {
+    setInvoices(prevInvoices => 
+      prevInvoices.map(invoice => 
+        invoice.id === invoiceId 
+          ? { ...invoice, status: newStatus }
+          : invoice
+      )
+    );
+    setShowStatusDropdown(null);
+    
+    // Show success message
+    const statusMessages = {
+      draft: 'Invoice status changed to Draft',
+      sent: 'Invoice status changed to Sent',
+      paid: 'Invoice marked as Paid',
+      overdue: 'Invoice marked as Overdue',
+      cancelled: 'Invoice cancelled'
+    };
+    
+    console.log(`✅ ${statusMessages[newStatus]} for invoice ${invoiceId}`);
+  };
+
+  const handleStatusClick = (invoiceId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setShowStatusDropdown(showStatusDropdown === invoiceId ? null : invoiceId);
   };
 
   const handleCreateInvoice = () => {
-    if (onNavigate) {
-      onNavigate('invoice-create');
-    } else {
-      setShowCreateInvoice(true);
+    // Always use modal approach when we have the shouldOpenCreateInvoice mechanism
+    // This ensures we stay within the AccountingDashboard context
+    setShowCreateInvoice(true);
+  };
+
+  const handleSaveInvoice = (newInvoice: any) => {
+    console.log('🔥 New invoice received:', newInvoice);
+    console.log('🔥 Current invoices before adding:', invoices.length);
+    
+    // Ensure we have valid data
+    if (!newInvoice) {
+      console.error('❌ No invoice data received');
+      return;
     }
+
+    // Transform the NewInvoicePage format to InvoicesPage format
+    const transformedInvoice: Invoice = {
+      id: newInvoice.id || `inv-${Date.now()}`,
+      invoiceNumber: newInvoice.invoiceNumber || `INV-${Date.now().toString().slice(-6)}`,
+      clientName: newInvoice.client?.name || 'Unknown Client',
+      clientEmail: newInvoice.client?.email || '',
+      issueDate: newInvoice.date ? new Date(newInvoice.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      dueDate: newInvoice.dueDate ? new Date(newInvoice.dueDate).toISOString().split('T')[0] : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      amount: newInvoice.total || 0,
+      status: (newInvoice.status?.toLowerCase() as 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled') || 'draft',
+      currency: 'USD', // Default currency
+      paymentTerms: newInvoice.paymentTerms || 'Net 30',
+      notes: newInvoice.notes || '',
+      items: (newInvoice.items || []).map((item: any) => ({
+        id: item.id || `item-${Date.now()}-${Math.random()}`,
+        description: item.description || '',
+        quantity: item.quantity || 1,
+        rate: item.unitPrice || 0,
+        amount: item.amount || 0
+      }))
+    };
+
+    console.log('🔥 Transformed invoice:', transformedInvoice);
+
+    // Add the new invoice to the beginning of the list (most recent first)
+    setInvoices(prevInvoices => {
+      const updatedInvoices = [transformedInvoice, ...prevInvoices];
+      console.log('🔥 Updated invoices list length:', updatedInvoices.length);
+      console.log('🔥 First invoice in updated list:', updatedInvoices[0]);
+      
+      // Close the modal after successful state update and force refresh
+      setTimeout(() => {
+        setShowCreateInvoice(false);
+        setRefreshKey(prev => prev + 1); // Force component refresh
+        console.log('✅ Invoice creation completed and modal closed');
+      }, 100);
+      
+      return updatedInvoices;
+    });
+    
+    console.log('✅ State update triggered');
+  };
+
+  // Status Dropdown Component
+  const StatusDropdown: React.FC<{ invoice: Invoice; position?: 'top' | 'bottom' }> = ({ invoice, position = 'bottom' }) => {
+    const availableStatuses: Array<{ value: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled', label: string, color: string, icon: React.ReactNode }> = [
+      { value: 'draft', label: 'Draft', color: 'text-gray-700', icon: <Edit3 size={14} /> },
+      { value: 'sent', label: 'Sent', color: 'text-blue-700', icon: <Send size={14} /> },
+      { value: 'paid', label: 'Paid', color: 'text-green-700', icon: <CheckCircle size={14} /> },
+      { value: 'overdue', label: 'Overdue', color: 'text-red-700', icon: <AlertCircle size={14} /> },
+      { value: 'cancelled', label: 'Cancelled', color: 'text-orange-700', icon: <Clock size={14} /> }
+    ];
+
+    return (
+      <div 
+        ref={statusDropdownRef}
+        className={`absolute z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-32 ${
+          position === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'
+        }`}
+      >
+        {availableStatuses.map((status) => (
+          <button
+            key={status.value}
+            onClick={() => handleStatusChange(invoice.id, status.value)}
+            className={`w-full px-3 py-2 text-left hover:bg-gray-50 transition-colors duration-200 flex items-center gap-2 font-poppins text-sm ${
+              invoice.status === status.value ? 'bg-blue-50 text-blue-700' : status.color
+            }`}
+          >
+            {status.icon}
+            {status.label}
+            {invoice.status === status.value && (
+              <CheckCircle size={12} className="ml-auto text-blue-600" />
+            )}
+          </button>
+        ))}
+      </div>
+    );
   };
 
   return (
-    <div className={showHeader ? "p-6 animate-fadeIn" : "animate-fadeIn"}>
+    <div key={refreshKey} className={showHeader ? "p-6 animate-fadeIn" : "animate-fadeIn"}>
       {/* Header - Only show when showHeader is true */}
       {showHeader && (
         <div className="mb-6">
@@ -268,7 +513,7 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack, showHeader = true, 
             {filteredInvoices.length}
           </p>
           <p className="text-sm text-gray-500 font-poppins mt-1">
-            ${totalAmount.toLocaleString()} total value
+            ₹{totalAmount.toLocaleString()} total value
           </p>
         </div>
 
@@ -278,7 +523,7 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack, showHeader = true, 
             <span className="font-poppins font-medium text-gray-900">Paid</span>
           </div>
           <p className="text-2xl font-poppins font-semibold text-green-600">
-            ${paidAmount.toLocaleString()}
+            ₹{paidAmount.toLocaleString()}
           </p>
           <p className="text-sm text-gray-500 font-poppins mt-1">
             {filteredInvoices.filter(inv => inv.status === 'paid').length} invoices
@@ -291,7 +536,7 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack, showHeader = true, 
             <span className="font-poppins font-medium text-gray-900">Pending</span>
           </div>
           <p className="text-2xl font-poppins font-semibold text-orange-600">
-            ${pendingAmount.toLocaleString()}
+            ₹{pendingAmount.toLocaleString()}
           </p>
           <p className="text-sm text-gray-500 font-poppins mt-1">
             {filteredInvoices.filter(inv => inv.status === 'sent' || inv.status === 'overdue').length} invoices
@@ -307,7 +552,7 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack, showHeader = true, 
             {filteredInvoices.filter(inv => inv.status === 'overdue').length}
           </p>
           <p className="text-sm text-gray-500 font-poppins mt-1">
-            ${filteredInvoices.filter(inv => inv.status === 'overdue').reduce((sum, inv) => sum + inv.amount, 0).toLocaleString()}
+            ₹{filteredInvoices.filter(inv => inv.status === 'overdue').reduce((sum, inv) => sum + inv.amount, 0).toLocaleString()}
           </p>
         </div>
       </div>
@@ -460,17 +705,27 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack, showHeader = true, 
                     {invoice.clientName}
                   </p>
                 </div>
-                <span className={`px-3 py-1 rounded-full text-xs font-poppins font-medium flex items-center gap-1 ${getStatusColor(invoice.status)}`}>
-                  {getStatusIcon(invoice.status)}
-                  {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                </span>
+                <div className="relative">
+                  <button
+                    onClick={(e) => handleStatusClick(invoice.id, e)}
+                    className={`px-3 py-1 rounded-full text-xs font-poppins font-medium flex items-center gap-1 hover:opacity-80 transition-opacity duration-200 ${getStatusColor(invoice.status)}`}
+                    title="Click to change status"
+                  >
+                    {getStatusIcon(invoice.status)}
+                    {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                    <Settings size={10} className="ml-1 opacity-60" />
+                  </button>
+                  {showStatusDropdown === invoice.id && (
+                    <StatusDropdown invoice={invoice} />
+                  )}
+                </div>
               </div>
 
               {/* Amount */}
               <div className="mb-4">
-                <p className="text-2xl font-poppins font-semibold text-gray-900">
-                  ${invoice.amount.toLocaleString()}
-                </p>
+                              <p className="text-2xl font-poppins font-semibold text-gray-900">
+                ₹{invoice.amount.toLocaleString()}
+              </p>
                 <p className="text-sm text-gray-500 font-poppins">
                   {invoice.currency}
                 </p>
@@ -566,15 +821,25 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack, showHeader = true, 
                     </td>
                     <td className="px-6 py-4">
                       <p className="font-poppins font-semibold text-gray-900">
-                        ${invoice.amount.toLocaleString()}
+                        ₹{invoice.amount.toLocaleString()}
                       </p>
                       <p className="text-sm text-gray-500 font-poppins">{invoice.currency}</p>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-poppins font-medium flex items-center gap-1 w-fit ${getStatusColor(invoice.status)}`}>
-                        {getStatusIcon(invoice.status)}
-                        {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                      </span>
+                      <div className="relative w-fit">
+                        <button
+                          onClick={(e) => handleStatusClick(invoice.id, e)}
+                          className={`px-3 py-1 rounded-full text-xs font-poppins font-medium flex items-center gap-1 hover:opacity-80 transition-opacity duration-200 ${getStatusColor(invoice.status)}`}
+                          title="Click to change status"
+                        >
+                          {getStatusIcon(invoice.status)}
+                          {invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
+                          <Settings size={10} className="ml-1 opacity-60" />
+                        </button>
+                        {showStatusDropdown === invoice.id && (
+                          <StatusDropdown invoice={invoice} />
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <p className={`font-poppins ${
@@ -707,8 +972,8 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack, showHeader = true, 
                         <tr key={item.id} className="border-t border-gray-200">
                           <td className="px-4 py-3 font-poppins text-sm">{item.description}</td>
                           <td className="px-4 py-3 font-poppins text-sm text-center">{item.quantity}</td>
-                          <td className="px-4 py-3 font-poppins text-sm text-right">${item.rate.toLocaleString()}</td>
-                          <td className="px-4 py-3 font-poppins text-sm text-right font-medium">${item.amount.toLocaleString()}</td>
+                          <td className="px-4 py-3 font-poppins text-sm text-right">₹{item.rate.toLocaleString()}</td>
+                          <td className="px-4 py-3 font-poppins text-sm text-right font-medium">₹{item.amount.toLocaleString()}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -720,7 +985,7 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack, showHeader = true, 
                     <div className="flex justify-between py-2 border-t border-gray-200">
                       <span className="font-poppins font-semibold text-gray-900">Total:</span>
                       <span className="font-poppins font-semibold text-gray-900 text-lg">
-                        ${selectedInvoice.amount.toLocaleString()}
+                        ₹{selectedInvoice.amount.toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -740,10 +1005,20 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack, showHeader = true, 
 
             {/* Modal Footer */}
             <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-              <span className={`px-3 py-1 rounded-full text-sm font-poppins font-medium flex items-center gap-2 ${getStatusColor(selectedInvoice.status)}`}>
-                {getStatusIcon(selectedInvoice.status)}
-                {selectedInvoice.status.charAt(0).toUpperCase() + selectedInvoice.status.slice(1)}
-              </span>
+              <div className="relative">
+                <button
+                  onClick={(e) => handleStatusClick(selectedInvoice.id, e)}
+                  className={`px-3 py-1 rounded-full text-sm font-poppins font-medium flex items-center gap-2 hover:opacity-80 transition-opacity duration-200 ${getStatusColor(selectedInvoice.status)}`}
+                  title="Click to change status"
+                >
+                  {getStatusIcon(selectedInvoice.status)}
+                  {selectedInvoice.status.charAt(0).toUpperCase() + selectedInvoice.status.slice(1)}
+                  <Settings size={12} className="ml-1 opacity-60" />
+                </button>
+                {showStatusDropdown === selectedInvoice.id && (
+                  <StatusDropdown invoice={selectedInvoice} position="top" />
+                )}
+              </div>
               
               <div className="flex items-center gap-3">
                 <button
@@ -771,6 +1046,15 @@ const InvoicesPage: React.FC<InvoicesPageProps> = ({ onBack, showHeader = true, 
         </div>
       )}
 
+      {/* New Invoice Page */}
+      {showCreateInvoice && (
+        <div className="fixed inset-0 bg-white z-50 overflow-auto">
+          <NewInvoicePage
+            onClose={() => setShowCreateInvoice(false)}
+            onSave={handleSaveInvoice}
+          />
+        </div>
+      )}
 
     </div>
   );

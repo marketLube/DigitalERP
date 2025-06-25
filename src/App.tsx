@@ -23,13 +23,15 @@ import TeamReportsPage from './components/Reports/TeamReportsPage';
 import ExportPage from './components/Reports/ExportPage';
 import TestDesigns from './components/Test/TestDesigns';
 import InlineInvoiceMaker from './components/Accounting/InlineInvoiceMaker';
+import NewInvoicePage from './components/Accounting/NewInvoicePage';
+import { InvoiceProvider } from './contexts/InvoiceContext';
 
 type PageType = 
   | 'dashboard' 
   | 'taskboard' | 'taskboard-notes' | 'taskboard-my-tasks' | 'taskboard-calendar' | 'taskboard-reports' | 'taskboard-settings'
   | 'sales-pipeline' | 'sales-appointments' | 'sales-proposals' | 'sales-analytics' | 'sales-settings'
   | 'hr-dashboard' | 'hr-directory' | 'hr-attendance' | 'hr-leave' | 'hr-recruitment' | 'hr-performance' | 'hr-payroll' | 'hr-documents' | 'hr-reports' | 'hr-employee-hub' | 'hr-settings'
-  | 'accounting-dashboard' | 'accounting-daybook' | 'accounting-invoices' | 'accounting-tax' | 'accounting-profit-loss' | 'accounting-settings' | 'invoice-create'
+  | 'accounting-dashboard' | 'accounting-daybook' | 'accounting-invoices' | 'accounting-tax' | 'accounting-profit-loss' | 'accounting-settings' | 'invoice-create' | 'new-invoice'
   | 'reports-dashboard' | 'reports-tasks' | 'reports-team' | 'reports-export'
   | 'settings-general' | 'settings-teams' | 'settings-roles' | 'settings-integrations'
   | 'team-overview' | 'status-management'
@@ -66,7 +68,7 @@ function App() {
     switch (appState.currentPage) {
       // Dashboard
       case 'dashboard':
-        return <DashboardContent />;
+        return <DashboardContent onNavigate={navigateToPage} />;
 
       // Taskboard
       case 'taskboard':
@@ -140,12 +142,23 @@ function App() {
       // Invoice Creation
       case 'invoice-create':
         return (
-          <InlineInvoiceMaker
+          <NewInvoicePage
             onClose={() => navigateToPage('accounting-invoices')}
             onSave={(invoice) => {
               console.log('Invoice created:', invoice);
               navigateToPage('accounting-invoices');
-              // Here you would typically save to your backend
+            }}
+          />
+        );
+
+      // Standalone New Invoice Page
+      case 'new-invoice':
+        return (
+          <NewInvoicePage
+            onClose={() => navigateToPage('accounting-invoices')}
+            onSave={(invoice) => {
+              console.log('Invoice created:', invoice);
+              navigateToPage('accounting-invoices');
             }}
           />
         );
@@ -227,18 +240,20 @@ function App() {
   };
 
   return (
-    <div className="bg-gray-50 font-poppins min-h-screen">
-      <Sidebar 
-        onNavigate={(page) => navigateToPage(page as PageType)} 
-        currentPage={getCurrentActiveModule()}
-      />
-      <div className="ml-16">
-        <TenantHeader />
-        <main className="p-8">
-          {renderContent()}
-        </main>
+    <InvoiceProvider>
+      <div className="bg-gray-50 font-poppins min-h-screen">
+        <Sidebar 
+          onNavigate={(page) => navigateToPage(page as PageType)} 
+          currentPage={getCurrentActiveModule()}
+        />
+        <div className="ml-16">
+          <TenantHeader />
+          <main className="p-8">
+            {renderContent()}
+          </main>
+        </div>
       </div>
-    </div>
+    </InvoiceProvider>
   );
 }
 

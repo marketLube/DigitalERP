@@ -81,6 +81,8 @@ const SidebarFlyout: React.FC<SidebarFlyoutProps> = ({
       // Accounting routes
       else if (route.href === '/accounting/dashboard') {
         onNavigate('accounting-dashboard');
+      } else if (route.href === '/new-invoice') {
+        onNavigate('new-invoice');
       } else if (route.href === '/accounting/daybook') {
         onNavigate('accounting-daybook');
       } else if (route.href === '/accounting/invoices') {

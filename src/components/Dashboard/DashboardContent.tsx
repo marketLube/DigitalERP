@@ -1,7 +1,11 @@
 import React from 'react';
-import { BarChart3, Users, DollarSign, TrendingUp } from 'lucide-react';
+import { BarChart3, Users, DollarSign, TrendingUp, FileText, Plus } from 'lucide-react';
 
-const DashboardContent: React.FC = () => {
+interface DashboardContentProps {
+  onNavigate?: (page: string) => void;
+}
+
+const DashboardContent: React.FC<DashboardContentProps> = ({ onNavigate }) => {
   const stats = [
     {
       title: 'Total Revenue',
@@ -75,6 +79,66 @@ const DashboardContent: React.FC = () => {
             </div>
           );
         })}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="mb-8">
+        <h3 className="text-lg font-poppins font-semibold text-gray-900 mb-4">
+          Quick Actions
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <button
+            onClick={() => onNavigate?.('new-invoice')}
+            className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-blue-300 hover:shadow-md transition-all duration-200 group"
+          >
+            <div className="p-2 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
+              <FileText size={20} className="text-blue-600" />
+            </div>
+            <div className="text-left">
+              <p className="font-poppins font-medium text-gray-900 text-sm">New Invoice</p>
+              <p className="text-xs text-gray-600 font-poppins">Create invoice</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => onNavigate?.('taskboard')}
+            className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-green-300 hover:shadow-md transition-all duration-200 group"
+          >
+            <div className="p-2 bg-green-50 rounded-lg group-hover:bg-green-100 transition-colors">
+              <Plus size={20} className="text-green-600" />
+            </div>
+            <div className="text-left">
+              <p className="font-poppins font-medium text-gray-900 text-sm">New Task</p>
+              <p className="text-xs text-gray-600 font-poppins">Add task</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => onNavigate?.('sales-pipeline')}
+            className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-purple-300 hover:shadow-md transition-all duration-200 group"
+          >
+            <div className="p-2 bg-purple-50 rounded-lg group-hover:bg-purple-100 transition-colors">
+              <TrendingUp size={20} className="text-purple-600" />
+            </div>
+            <div className="text-left">
+              <p className="font-poppins font-medium text-gray-900 text-sm">Add Lead</p>
+              <p className="text-xs text-gray-600 font-poppins">New prospect</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => onNavigate?.('hr-directory')}
+            className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-orange-300 hover:shadow-md transition-all duration-200 group"
+          >
+            <div className="p-2 bg-orange-50 rounded-lg group-hover:bg-orange-100 transition-colors">
+              <Users size={20} className="text-orange-600" />
+            </div>
+            <div className="text-left">
+              <p className="font-poppins font-medium text-gray-900 text-sm">Add Member</p>
+              <p className="text-xs text-gray-600 font-poppins">New team member</p>
+            </div>
+          </button>
+        </div>
       </div>
 
       {/* Recent Activity */}
