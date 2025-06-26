@@ -718,6 +718,13 @@ const LeadPipelinePage: React.FC<LeadPipelinePageProps> = ({ defaultTab = 'pipel
   const [cardMode, setCardMode] = useState<'colorful' | 'minimal'>('colorful');
   const [minProbability, setMinProbability] = useState<number>(0);
   const [maxProbability, setMaxProbability] = useState<number>(100);
+  
+  // New multi-select status filtering state
+  const [selectedMainStatuses, setSelectedMainStatuses] = useState<string[]>(['All']);
+  const [selectedSubStatuses, setSelectedSubStatuses] = useState<string[]>(['All']);
+  const [showMainStatusDropdown, setShowMainStatusDropdown] = useState(false);
+  const [showSubStatusDropdown, setShowSubStatusDropdown] = useState(false);
+  
   const kanbanContainerRef = useRef<HTMLDivElement>(null);
 
   // Date filtering state
@@ -748,6 +755,22 @@ const LeadPipelinePage: React.FC<LeadPipelinePageProps> = ({ defaultTab = 'pipel
   useEffect(() => {
     setActiveTab(defaultTab);
   }, [defaultTab]);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showMainStatusDropdown || showSubStatusDropdown) {
+        const target = event.target as Element;
+        if (!target.closest('.relative')) {
+          setShowMainStatusDropdown(false);
+          setShowSubStatusDropdown(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMainStatusDropdown, showSubStatusDropdown]);
 
   // Ultra-fast, native-feeling horizontal scrolling
   useEffect(() => {
@@ -1636,6 +1659,12 @@ const LeadPipelinePage: React.FC<LeadPipelinePageProps> = ({ defaultTab = 'pipel
   const priorities = ['All', 'Hot', 'Warm', 'Cold'];
   const assignees = ['All', 'Sarah Johnson', 'Mike Chen', 'Emily Davis', 'Alex Rodriguez', 'John Smith'];
 
+  // Get unique sub-statuses from the data
+  const allSubStatuses = useMemo(() => {
+    const unique = Array.from(new Set(mockLeads.map(lead => lead.subStatus)));
+    return ['All', ...unique];
+  }, [mockLeads]);
+
   // Appointment-specific constants
   const appointmentStatuses = ['Scheduled', 'Confirmed', 'In Progress', 'Completed', 'Cancelled', 'Rescheduled'];
   const appointmentPriorities = ['All', 'High', 'Medium', 'Low'];
@@ -1650,15 +1679,23 @@ const LeadPipelinePage: React.FC<LeadPipelinePageProps> = ({ defaultTab = 'pipel
       const matchesAssignee = selectedAssignee === 'All' || lead.assignee === selectedAssignee;
       const matchesProbability = lead.probability >= minProbability && lead.probability <= maxProbability;
       
+      // Multi-select main status filtering
+      const matchesMainStatus = selectedMainStatuses.includes('All') || selectedMainStatuses.includes(lead.mainStatus);
+      
+      // Multi-select sub status filtering  
+      const matchesSubStatus = selectedSubStatuses.includes('All') || selectedSubStatuses.includes(lead.subStatus);
+      
       // Date filtering based on createdDate
       const leadDate = new Date(lead.createdDate);
       const startDate = new Date(dateRange.startDate);
       const endDate = new Date(dateRange.endDate);
       const matchesDateRange = leadDate >= startDate && leadDate <= endDate;
       
-      return matchesSearch && matchesPriority && matchesAssignee && matchesProbability && matchesDateRange;
+      return matchesSearch && matchesPriority && matchesAssignee && matchesProbability && 
+             matchesMainStatus && matchesSubStatus && matchesDateRange;
     });
-  }, [mockLeads, searchQuery, selectedPriority, selectedAssignee, minProbability, maxProbability, dateRange]);
+  }, [mockLeads, searchQuery, selectedPriority, selectedAssignee, minProbability, maxProbability, 
+      selectedMainStatuses, selectedSubStatuses, dateRange]);
 
   const leadsByStatus = useMemo(() => {
     return statuses.reduce((acc, status) => {
@@ -1666,6 +1703,23 @@ const LeadPipelinePage: React.FC<LeadPipelinePageProps> = ({ defaultTab = 'pipel
       return acc;
     }, {} as Record<string, Lead[]>);
   }, [filteredLeads, statuses]);
+
+  // Compute counts for main statuses and sub statuses
+  const mainStatusCounts = useMemo(() => {
+    const counts: Record<string, number> = { 'All': mockLeads.length };
+    statuses.forEach(status => {
+      counts[status] = mockLeads.filter(lead => lead.mainStatus === status).length;
+    });
+    return counts;
+  }, [mockLeads, statuses]);
+
+  const subStatusCounts = useMemo(() => {
+    const counts: Record<string, number> = { 'All': mockLeads.length };
+    allSubStatuses.slice(1).forEach(subStatus => { // Skip 'All'
+      counts[subStatus] = mockLeads.filter(lead => lead.subStatus === subStatus).length;
+    });
+    return counts;
+  }, [mockLeads, allSubStatuses]);
 
   // Appointment filtering
   const filteredAppointments = useMemo(() => {
@@ -1739,46 +1793,21 @@ const LeadPipelinePage: React.FC<LeadPipelinePageProps> = ({ defaultTab = 'pipel
 
   return (
     <div className="p-3 min-h-screen bg-white">
-      {/* Enhanced Compact Header - 40% Space Reduction */}
+      {/* New 2-Line Header Layout */}
       <div className="mb-4">
-        {/* Row 1: Title + Card Mode Toggle + Statistics */}
+        {/* Line 1: Page Header + Statistics (left) + Team Selector (middle) + Sub-routes + Card Mode (right) */}
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl font-poppins font-bold text-gray-900">
-            {activeTab === 'pipeline' ? 'Lead Pipeline' : 
-             activeTab === 'appointments' ? 'Appointments' :
-             activeTab === 'proposals' ? 'Proposals' :
-             activeTab === 'analytics' ? 'Analytics' : 'Settings'}
-          </h1>
-          
-          {/* Card Mode Toggle - Icon-based */}
-          {activeTab === 'pipeline' && (
-            <div className="flex items-center gap-4">
-              <div className="flex items-center bg-gray-100 p-0.5 rounded-lg">
-                <button
-                  onClick={() => setCardMode('colorful')}
-                  className={`px-2 py-1 rounded-md text-xs font-poppins font-medium transition-all duration-200 flex items-center gap-1.5 ${
-                    cardMode === 'colorful'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                >
-                  <Palette size={12} />
-                  Colorful
-                </button>
-                <button
-                  onClick={() => setCardMode('minimal')}
-                  className={`px-2 py-1 rounded-md text-xs font-poppins font-medium transition-all duration-200 flex items-center gap-1.5 ${
-                    cardMode === 'minimal'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                >
-                  <Minus size={12} />
-                  Minimal
-                </button>
-              </div>
-
-              {/* Compact Statistics Badges */}
+          {/* Left: Page Title + Statistics */}
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-poppins font-bold text-gray-900">
+              {activeTab === 'pipeline' ? 'Lead Pipeline' : 
+               activeTab === 'appointments' ? 'Appointments' :
+               activeTab === 'proposals' ? 'Proposals' :
+               activeTab === 'analytics' ? 'Analytics' : 'Settings'}
+            </h1>
+            
+            {/* Statistics moved to left side */}
+            {activeTab === 'pipeline' && (
               <div className="flex items-center gap-2">
                 <div className="bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-xs font-poppins font-medium">
                   {filteredLeads.length} Leads
@@ -1793,14 +1822,12 @@ const LeadPipelinePage: React.FC<LeadPipelinePageProps> = ({ defaultTab = 'pipel
                   {avgProbability}%
                 </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        {/* Row 2: Team Selection with Gradient Background */}
-        {activeTab === 'pipeline' && (
-          <div className="flex items-center justify-center bg-gradient-to-r from-blue-50 to-purple-50 p-3 rounded-lg border border-blue-200 mb-3">
-            <div className="flex items-center gap-3">
+          {/* Middle: Team Selection */}
+          {activeTab === 'pipeline' && (
+            <div className="flex items-center gap-3 bg-gradient-to-r from-blue-50 to-purple-50 px-4 py-2 rounded-lg border border-blue-200">
               <Users size={16} className="text-blue-600" />
               <select className="bg-transparent text-sm font-poppins font-medium text-gray-900 focus:outline-none">
                 <option>All Teams ({filteredLeads.length})</option>
@@ -1811,126 +1838,208 @@ const LeadPipelinePage: React.FC<LeadPipelinePageProps> = ({ defaultTab = 'pipel
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
               <span className="text-xs text-gray-600">Live</span>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Row 3: Clean Tab Navigation */}
-        <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg">
-          {[
-            { key: 'pipeline', label: 'Pipeline', icon: Target },
-            { key: 'appointments', label: 'Appointments', icon: Calendar },
-            { key: 'proposals', label: 'Proposals', icon: FileText },
-            { key: 'analytics', label: 'Analytics', icon: BarChart3 },
-            { key: 'settings', label: 'Settings', icon: Settings }
-          ].map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key as any)}
-              className={`px-3 py-1.5 rounded-md text-sm font-poppins font-medium transition-all duration-200 flex items-center gap-1.5 ${
-                activeTab === key
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              <Icon size={14} />
-              {label}
-            </button>
-          ))}
+          {/* Right: Sub-routes + Card Mode Toggle */}
+          <div className="flex items-center gap-3">
+            {/* Clean Tab Navigation */}
+            <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg">
+              {[
+                { key: 'pipeline', label: 'Pipeline', icon: Target },
+                { key: 'appointments', label: 'Appointments', icon: Calendar },
+                { key: 'proposals', label: 'Proposals', icon: FileText },
+                { key: 'analytics', label: 'Analytics', icon: BarChart3 },
+                { key: 'settings', label: 'Settings', icon: Settings }
+              ].map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveTab(key as any)}
+                  className={`px-3 py-1.5 rounded-md text-sm font-poppins font-medium transition-all duration-200 flex items-center gap-1.5 ${
+                    activeTab === key
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  <Icon size={14} />
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Card Mode Toggle - Icon Only */}
+            {activeTab === 'pipeline' && (
+              <div className="flex items-center bg-gray-100 p-0.5 rounded-lg">
+                <button
+                  onClick={() => setCardMode('colorful')}
+                  className={`p-2 rounded-md transition-all duration-200 ${
+                    cardMode === 'colorful'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                  title="Colorful Cards"
+                >
+                  <Palette size={16} />
+                </button>
+                <button
+                  onClick={() => setCardMode('minimal')}
+                  className={`p-2 rounded-md transition-all duration-200 ${
+                    cardMode === 'minimal'
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                  title="Minimal Cards"
+                >
+                  <Minus size={16} />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Pipeline Tab Content */}
       {activeTab === 'pipeline' && (
         <>
-
-
-          {/* Compact Filter Bar - Taskboard Style */}
+          {/* Line 2: Enhanced Filter Bar with Multi-Select Status Dropdowns */}
           <div className="bg-white p-3 rounded-xl border border-gray-200 mb-4 shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="flex flex-col sm:flex-row gap-2 flex-1">
-                {/* Search */}
-                <div className="relative flex-1 max-w-xs">
-                  <Search size={14} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search leads..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm"
-                  />
-                </div>
-
-                {/* Compact Filters Row */}
-                <div className="flex items-center gap-2">
-                  {/* Date Range Filter */}
-                  <DateRangePicker
-                    value={dateRange}
-                    onChange={setDateRange}
-                    className="min-w-32"
-                  />
-
-                  {/* Priority Filter */}
-                  <select
-                    value={selectedPriority}
-                    onChange={(e) => setSelectedPriority(e.target.value)}
-                    className="px-2 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white min-w-28"
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 flex-1">
+                {/* Main Status Multi-Select Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowMainStatusDropdown(!showMainStatusDropdown)}
+                    className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white hover:bg-gray-50 transition-colors"
                   >
-                    {priorities.map(priority => (
-                      <option key={priority} value={priority}>
-                        {priority === 'All' ? 'All' : priority}
-                      </option>
-                    ))}
-                  </select>
-
-                  {/* Assignee Filter */}
-                  <select
-                    value={selectedAssignee}
-                    onChange={(e) => setSelectedAssignee(e.target.value)}
-                    className="px-2 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white min-w-32"
-                  >
-                    {assignees.map(assignee => (
-                      <option key={assignee} value={assignee}>
-                        {assignee === 'All' ? 'All' : assignee.split(' ')[0]}
-                      </option>
-                    ))}
-                  </select>
-
-                  {/* Probability Range Filter */}
-                  <div className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg bg-white">
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={minProbability}
-                      onChange={(e) => setMinProbability(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
-                      className="w-12 text-xs font-poppins text-center border-none focus:outline-none"
-                      placeholder="0"
-                    />
-                    <span className="text-gray-400 text-xs">%</span>
-                    <div className="w-16 h-1 bg-gray-200 rounded-full relative">
-                      <div 
-                        className="h-full bg-blue-500 rounded-full" 
-                        style={{ 
-                          width: `${maxProbability - minProbability}%`,
-                          marginLeft: `${minProbability}%`
-                        }}
-                      />
+                    <Flag size={14} className="text-gray-500" />
+                    <span>
+                      {selectedMainStatuses.includes('All') 
+                        ? `All Status (${mainStatusCounts['All']})` 
+                        : selectedMainStatuses.length === 1 
+                          ? `${selectedMainStatuses[0]} (${mainStatusCounts[selectedMainStatuses[0]] || 0})`
+                          : `${selectedMainStatuses.length} Selected`}
+                    </span>
+                    <ChevronRight size={14} className={`text-gray-400 transition-transform ${showMainStatusDropdown ? 'rotate-90' : ''}`} />
+                  </button>
+                  
+                  {showMainStatusDropdown && (
+                    <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                      <div className="p-2 max-h-60 overflow-y-auto">
+                        {['All', ...statuses].map(status => (
+                          <label key={status} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedMainStatuses.includes(status)}
+                              onChange={(e) => {
+                                if (status === 'All') {
+                                  setSelectedMainStatuses(e.target.checked ? ['All'] : []);
+                                } else {
+                                  const newSelection = e.target.checked
+                                    ? selectedMainStatuses.filter(s => s !== 'All').concat(status)
+                                    : selectedMainStatuses.filter(s => s !== status);
+                                  setSelectedMainStatuses(newSelection.length === 0 ? ['All'] : newSelection);
+                                }
+                              }}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="flex-1 text-sm font-poppins text-gray-700">
+                              {status}
+                            </span>
+                            <span className="text-xs font-poppins text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                              {mainStatusCounts[status] || 0}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={maxProbability}
-                      onChange={(e) => setMaxProbability(Math.min(100, Math.max(0, parseInt(e.target.value) || 100)))}
-                      className="w-12 text-xs font-poppins text-center border-none focus:outline-none"
-                      placeholder="100"
-                    />
-                    <span className="text-gray-400 text-xs">%</span>
-                  </div>
+                  )}
                 </div>
+
+                {/* Sub Status Multi-Select Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowSubStatusDropdown(!showSubStatusDropdown)}
+                    className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white hover:bg-gray-50 transition-colors"
+                  >
+                    <Clock size={14} className="text-gray-500" />
+                    <span>
+                      {selectedSubStatuses.includes('All') 
+                        ? `All Sub-Status (${subStatusCounts['All']})` 
+                        : selectedSubStatuses.length === 1 
+                          ? `${selectedSubStatuses[0]} (${subStatusCounts[selectedSubStatuses[0]] || 0})`
+                          : `${selectedSubStatuses.length} Selected`}
+                    </span>
+                    <ChevronRight size={14} className={`text-gray-400 transition-transform ${showSubStatusDropdown ? 'rotate-90' : ''}`} />
+                  </button>
+                  
+                  {showSubStatusDropdown && (
+                    <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                      <div className="p-2 max-h-60 overflow-y-auto">
+                        {allSubStatuses.map(subStatus => (
+                          <label key={subStatus} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedSubStatuses.includes(subStatus)}
+                              onChange={(e) => {
+                                if (subStatus === 'All') {
+                                  setSelectedSubStatuses(e.target.checked ? ['All'] : []);
+                                } else {
+                                  const newSelection = e.target.checked
+                                    ? selectedSubStatuses.filter(s => s !== 'All').concat(subStatus)
+                                    : selectedSubStatuses.filter(s => s !== subStatus);
+                                  setSelectedSubStatuses(newSelection.length === 0 ? ['All'] : newSelection);
+                                }
+                              }}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="flex-1 text-sm font-poppins text-gray-700">
+                              {subStatus}
+                            </span>
+                            <span className="text-xs font-poppins text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                              {subStatusCounts[subStatus] || 0}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Assignee Filter */}
+                <select
+                  value={selectedAssignee}
+                  onChange={(e) => setSelectedAssignee(e.target.value)}
+                  className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white hover:bg-gray-50 transition-colors"
+                >
+                  {assignees.map(assignee => (
+                    <option key={assignee} value={assignee}>
+                      {assignee === 'All' ? 'All Assignees' : assignee.split(' ')[0]}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Custom Date Filter */}
+                <DateRangePicker
+                  value={dateRange}
+                  onChange={setDateRange}
+                  className="min-w-40"
+                />
+
+                {/* Priority Sorting Button */}
+                <button 
+                  onClick={() => {
+                    // Cycle through priority options
+                    const currentIndex = priorities.indexOf(selectedPriority);
+                    const nextIndex = (currentIndex + 1) % priorities.length;
+                    setSelectedPriority(priorities[nextIndex]);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-poppins text-sm bg-white hover:bg-gray-50 transition-colors"
+                >
+                  <TrendingUp size={14} className="text-gray-500" />
+                  <span>{selectedPriority === 'All' ? 'All Priorities' : selectedPriority}</span>
+                </button>
               </div>
 
-              <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-poppins font-medium transition-colors duration-200 flex items-center gap-1.5 text-sm">
+              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-poppins font-medium transition-colors duration-200 flex items-center gap-2 text-sm">
                 <Plus size={14} />
                 Add Lead
               </button>
