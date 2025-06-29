@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import LoginPage from './components/Auth/LoginPage';
+import OwnerDashboard from './components/Owner/OwnerDashboard';
 import Sidebar from './components/Sidebar/Sidebar';
 import DashboardContent from './components/Dashboard/DashboardContent';
 import TeamsPage from './components/Settings/TeamsPage';
@@ -42,11 +45,47 @@ interface AppState {
   selectedTeamName?: string;
 }
 
-function App() {
+// Main App Component with Authentication
+const AppContent: React.FC = () => {
+  const { user, login, logout, isLoading } = useAuth();
   const [appState, setAppState] = useState<AppState>({
     currentPage: 'dashboard'
   });
 
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading Digital ERP...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login page if not authenticated
+  if (!user || !user.isAuthenticated) {
+    return <LoginPage onLogin={login} />;
+  }
+
+  // Show Owner Dashboard if user is owner
+  if (user.userType === 'owner') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <OwnerDashboard />
+        {/* Owner Logout Button */}
+        <button
+          onClick={logout}
+          className="fixed top-4 right-4 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+        >
+          Logout
+        </button>
+      </div>
+    );
+  }
+
+  // Navigation functions for tenant view
   const navigateToPage = (page: PageType, teamId?: string, teamName?: string) => {
     setAppState({
       currentPage: page,
@@ -219,6 +258,7 @@ function App() {
     return 'dashboard';
   };
 
+  // Tenant Dashboard View
   return (
     <div className="bg-gray-50 font-poppins min-h-screen">
       <Sidebar 
@@ -229,11 +269,28 @@ function App() {
         {renderContent()}
       </div>
       
+      {/* Tenant Logout Button */}
+      <button
+        onClick={logout}
+        className="fixed top-4 right-4 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors z-50"
+      >
+        Logout
+      </button>
+      
       {/* Floating Chat Icon - Always visible */}
       <FloatingChatIcon
         onNavigateToChats={() => navigateToPage('chats-channels')}
       />
     </div>
+  );
+};
+
+// Main App Component with Auth Provider
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

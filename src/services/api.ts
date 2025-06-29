@@ -1,5 +1,5 @@
-// API Service Layer - Will be connected to MongoDB backend
-// This layer abstracts all API calls and handles tenant context
+// API Service Layer - Enhanced for Shared Database Multi-Tenancy
+// This layer handles tenant isolation at the database level
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -12,45 +12,61 @@ export interface ApiConfig {
   baseURL: string;
   tenantId?: string;
   authToken?: string;
+  dbPool?: any; // Database connection pool
 }
 
 class ApiService {
   private config: ApiConfig;
 
-  constructor(config: ApiConfig) {
-    this.config = config;
+  constructor(baseURL: string = '/api/v1') {
+    this.config = { baseURL };
   }
 
-  // Update tenant context for all subsequent requests
+  // Enhanced tenant context with database session management
   setTenantContext(tenantId: string, authToken?: string) {
     this.config.tenantId = tenantId;
     this.config.authToken = authToken;
+    
+    // Set tenant context in database session for RLS
+    if (this.config.dbPool) {
+      this.config.dbPool.query(
+        `SELECT set_config('app.current_tenant', $1, true)`,
+        [tenantId]
+      );
+    }
   }
 
-  // Generic request method with tenant headers
+  // Enhanced request method with tenant validation
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     try {
+      // Validate tenant context is set
+      if (!this.config.tenantId && !endpoint.includes('/auth/') && !endpoint.includes('/owner/')) {
+        throw new Error('Tenant context not set');
+      }
+
       const url = `${this.config.baseURL}${endpoint}`;
       
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
+        'X-Request-ID': `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       };
 
-      // Merge existing headers if present
-      if (options.headers) {
-        Object.assign(headers, options.headers);
-      }
-
-      // Add tenant context to headers (for backend processing)
+      // Add tenant isolation headers
       if (this.config.tenantId) {
         headers['X-Tenant-ID'] = this.config.tenantId;
+        headers['X-Tenant-Isolation'] = 'enabled';
       }
 
       if (this.config.authToken) {
         headers['Authorization'] = `Bearer ${this.config.authToken}`;
+      }
+
+      // Merge existing headers
+      if (options.headers) {
+        Object.assign(headers, options.headers);
       }
 
       const response = await fetch(url, {
@@ -60,10 +76,19 @@ class ApiService {
 
       const data = await response.json();
 
+      // Enhanced error handling with tenant context
       if (!response.ok) {
+        const errorMessage = data.message || 'API request failed';
+        console.error(`API Error [${this.config.tenantId}]:`, {
+          endpoint,
+          status: response.status,
+          error: errorMessage,
+          tenantId: this.config.tenantId
+        });
+        
         return {
           success: false,
-          error: data.message || 'API request failed',
+          error: errorMessage,
         };
       }
 
@@ -73,6 +98,7 @@ class ApiService {
         message: data.message,
       };
     } catch (error) {
+      console.error(`API Error [${this.config.tenantId}]:`, error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -80,84 +106,128 @@ class ApiService {
     }
   }
 
-  // CRUD operations
-  async get<T>(endpoint: string): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, { method: 'GET' });
+  // GET request with tenant context
+  async get<T>(endpoint: string, params?: Record<string, any>): Promise<ApiResponse<T>> {
+    const url = params ? `${endpoint}?${new URLSearchParams(params)}` : endpoint;
+    return this.request<T>(url);
   }
 
-  async post<T>(endpoint: string, data: any): Promise<ApiResponse<T>> {
+  // POST request with tenant context
+  async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async put<T>(endpoint: string, data: any): Promise<ApiResponse<T>> {
+  // PUT request with tenant context
+  async put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: data ? JSON.stringify(data) : undefined,
     });
   }
 
-  async patch<T>(endpoint: string, data: any): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
-  }
-
+  // DELETE request with tenant context
   async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, { method: 'DELETE' });
+    return this.request<T>(endpoint, {
+      method: 'DELETE',
+    });
+  }
+
+  // Batch operations for multi-tenant scenarios
+  async batchRequest<T>(requests: Array<{
+    endpoint: string;
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+    data?: any;
+  }>): Promise<ApiResponse<T[]>> {
+    try {
+      const responses = await Promise.all(
+        requests.map(req => {
+          switch (req.method) {
+            case 'GET': return this.get(req.endpoint);
+            case 'POST': return this.post(req.endpoint, req.data);
+            case 'PUT': return this.put(req.endpoint, req.data);
+            case 'DELETE': return this.delete(req.endpoint);
+          }
+        })
+      );
+
+      return {
+        success: responses.every(r => r.success),
+        data: responses.map(r => r.data) as T[],
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Batch request failed',
+      };
+    }
   }
 }
 
-// Create API instance (will use environment variables in production)
-const apiConfig: ApiConfig = {
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001/api',
-};
+// Tenant-isolated API instance
+const api = new ApiService();
 
-export const api = new ApiService(apiConfig);
-
-// Tenant-specific API methods
+// Enhanced tenant-specific API methods with proper isolation
 export const tenantApi = {
-  // Proposals
-  proposals: {
-    getAll: () => api.get('/proposals'),
-    getById: (id: string) => api.get(`/proposals/${id}`),
-    create: (data: any) => api.post('/proposals', data),
-    update: (id: string, data: any) => api.put(`/proposals/${id}`, data),
-    delete: (id: string) => api.delete(`/proposals/${id}`),
+  // Accounting module with tenant isolation
+  accounting: {
+    transactions: {
+      getAll: (params?: any) => api.get('/accounting/transactions', params),
+      getById: (id: string) => api.get(`/accounting/transactions/${id}`),
+      create: (data: any) => api.post('/accounting/transactions', data),
+      update: (id: string, data: any) => api.put(`/accounting/transactions/${id}`, data),
+      delete: (id: string) => api.delete(`/accounting/transactions/${id}`),
+      getDayBook: (date?: string) => api.get('/accounting/daybook', { date }),
+      getTrialBalance: () => api.get('/accounting/trial-balance'),
+    },
+    invoices: {
+      getAll: (params?: any) => api.get('/accounting/invoices', params),
+      create: (data: any) => api.post('/accounting/invoices', data),
+      update: (id: string, data: any) => api.put(`/accounting/invoices/${id}`, data),
+    }
   },
 
-  // Leads
-  leads: {
-    getAll: () => api.get('/leads'),
-    getById: (id: string) => api.get(`/leads/${id}`),
-    create: (data: any) => api.post('/leads', data),
-    update: (id: string, data: any) => api.put(`/leads/${id}`, data),
-    delete: (id: string) => api.delete(`/leads/${id}`),
+  // HR module
+  hr: {
+    employees: {
+      getAll: (params?: any) => api.get('/hr/employees', params),
+      getById: (id: string) => api.get(`/hr/employees/${id}`),
+      create: (data: any) => api.post('/hr/employees', data),
+      update: (id: string, data: any) => api.put(`/hr/employees/${id}`, data),
+    },
+    attendance: {
+      getAll: (params?: any) => api.get('/hr/attendance', params),
+      markAttendance: (data: any) => api.post('/hr/attendance', data),
+    }
   },
 
-  // Teams
-  teams: {
-    getAll: () => api.get('/teams'),
-    getById: (id: string) => api.get(`/teams/${id}`),
-    create: (data: any) => api.post('/teams', data),
-    update: (id: string, data: any) => api.put(`/teams/${id}`, data),
-    delete: (id: string) => api.delete(`/teams/${id}`),
+  // Sales & CRM
+  sales: {
+    leads: {
+      getAll: (params?: any) => api.get('/sales/leads', params),
+      getById: (id: string) => api.get(`/sales/leads/${id}`),
+      create: (data: any) => api.post('/sales/leads', data),
+      update: (id: string, data: any) => api.put(`/sales/leads/${id}`, data),
+      delete: (id: string) => api.delete(`/sales/leads/${id}`),
+    },
+    proposals: {
+      getAll: (params?: any) => api.get('/sales/proposals', params),
+      create: (data: any) => api.post('/sales/proposals', data),
+      update: (id: string, data: any) => api.put(`/sales/proposals/${id}`, data),
+    }
   },
 
-  // Users
-  users: {
-    getAll: () => api.get('/users'),
-    getById: (id: string) => api.get(`/users/${id}`),
-    create: (data: any) => api.post('/users', data),
-    update: (id: string, data: any) => api.put(`/users/${id}`, data),
-    delete: (id: string) => api.delete(`/users/${id}`),
-    invite: (data: any) => api.post('/users/invite', data),
+  // Reports with tenant-specific data
+  reports: {
+    getSalesReport: (params: any) => api.get('/reports/sales', params),
+    getFinancialReport: (params: any) => api.get('/reports/financial', params),
+    getHRReport: (params: any) => api.get('/reports/hr', params),
+    getCustomReport: (reportId: string, params: any) => api.get(`/reports/custom/${reportId}`, params),
   },
 
-  // Tenant Configuration
+  // Tenant configuration
   config: {
     get: () => api.get('/config'),
     update: (data: any) => api.put('/config', data),
@@ -165,29 +235,57 @@ export const tenantApi = {
     updateStatuses: (module: string, data: any) => api.put(`/config/statuses/${module}`, data),
   },
 
-  // Reports
-  reports: {
-    getSalesReport: (params: any) => api.get(`/reports/sales?${new URLSearchParams(params)}`),
-    getTeamReport: (params: any) => api.get(`/reports/team?${new URLSearchParams(params)}`),
-    getTaskReport: (params: any) => api.get(`/reports/tasks?${new URLSearchParams(params)}`),
-  },
-
-  // Authentication
+  // Authentication with tenant validation
   auth: {
     login: (credentials: any) => api.post('/auth/login', credentials),
     logout: () => api.post('/auth/logout', {}),
     refreshToken: () => api.post('/auth/refresh', {}),
     validateTenant: (subdomain: string) => api.get(`/auth/validate-tenant/${subdomain}`),
+    getCurrentUser: () => api.get('/auth/me'),
   },
 };
 
+// Owner-level API for platform management (no tenant isolation)
+export const ownerApi = {
+  tenants: {
+    getAll: (params?: any) => api.get('/owner/tenants', params),
+    getById: (id: string) => api.get(`/owner/tenants/${id}`),
+    create: (data: any) => api.post('/owner/tenants', data),
+    update: (id: string, data: any) => api.put(`/owner/tenants/${id}`, data),
+    suspend: (id: string) => api.put(`/owner/tenants/${id}/suspend`, {}),
+    activate: (id: string) => api.put(`/owner/tenants/${id}/activate`, {}),
+    getUsage: (id: string) => api.get(`/owner/tenants/${id}/usage`),
+  },
+  
+  analytics: {
+    getPlatformStats: () => api.get('/owner/analytics/platform'),
+    getRevenueAnalytics: (params?: any) => api.get('/owner/analytics/revenue', params),
+    getUserAnalytics: (params?: any) => api.get('/owner/analytics/users', params),
+    getSystemHealth: () => api.get('/owner/analytics/system-health'),
+  },
+
+  billing: {
+    getAllInvoices: (params?: any) => api.get('/owner/billing/invoices', params),
+    getRevenue: (params?: any) => api.get('/owner/billing/revenue', params),
+    processPayment: (data: any) => api.post('/owner/billing/payments', data),
+  },
+
+  system: {
+    getSystemStatus: () => api.get('/owner/system/status'),
+    getAuditLogs: (params?: any) => api.get('/owner/system/audit-logs', params),
+    performMaintenance: (data: any) => api.post('/owner/system/maintenance', data),
+  }
+};
+
+// Export the API service instance
+export { api };
+
 // Export individual API methods for convenience
 export const {
-  proposals: proposalsApi,
-  leads: leadsApi,
-  teams: teamsApi,
-  users: usersApi,
-  config: configApi,
+  accounting: accountingApi,
+  hr: hrApi,
+  sales: salesApi,
   reports: reportsApi,
+  config: configApi,
   auth: authApi,
 } = tenantApi; 

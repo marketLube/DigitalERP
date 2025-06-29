@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { Tenant, TenantUser, TenantConfig, TenantContext } from '../types/tenant';
+import { api, authApi, configApi } from '../services/api';
 
 // Mock data for development (will be replaced with API calls)
 const mockTenants: Tenant[] = [
@@ -197,13 +198,15 @@ const mockConfigs: TenantConfig[] = [
   }
 ];
 
+// Enhanced tenant reducer with database integration
 type TenantAction = 
   | { type: 'SET_TENANT'; payload: Tenant }
   | { type: 'SET_USER'; payload: TenantUser }
   | { type: 'SET_CONFIG'; payload: TenantConfig[] }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'UPDATE_CONFIG'; payload: Partial<TenantConfig> };
+  | { type: 'UPDATE_CONFIG'; payload: Partial<TenantConfig> }
+  | { type: 'CLEAR_TENANT_DATA' };
 
 interface TenantState {
   tenant: Tenant | null;
@@ -224,7 +227,7 @@ const initialState: TenantState = {
 function tenantReducer(state: TenantState, action: TenantAction): TenantState {
   switch (action.type) {
     case 'SET_TENANT':
-      return { ...state, tenant: action.payload };
+      return { ...state, tenant: action.payload, error: null };
     case 'SET_USER':
       return { ...state, user: action.payload };
     case 'SET_CONFIG':
@@ -232,7 +235,7 @@ function tenantReducer(state: TenantState, action: TenantAction): TenantState {
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
     case 'SET_ERROR':
-      return { ...state, error: action.payload };
+      return { ...state, error: action.payload, isLoading: false };
     case 'UPDATE_CONFIG':
       return {
         ...state,
@@ -240,6 +243,8 @@ function tenantReducer(state: TenantState, action: TenantAction): TenantState {
           c.id === action.payload.id ? { ...c, ...action.payload } : c
         )
       };
+    case 'CLEAR_TENANT_DATA':
+      return { ...initialState };
     default:
       return state;
   }
@@ -250,52 +255,170 @@ const TenantContextProvider = createContext<TenantContext | undefined>(undefined
 export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(tenantReducer, initialState);
 
-  // Simulate getting tenant from URL (digitalerp.com/subdomain)
+  // Enhanced tenant detection with database validation
   const getCurrentTenantFromURL = (): string | null => {
-    // In development, we'll use a default tenant
-    // In production, this would parse the URL: window.location.pathname.split('/')[1]
-    return 'marketlube'; // Default for development
+    // In production, parse the subdomain or path
+    // For development, use default tenant
+    const hostname = window.location.hostname;
+    
+    if (hostname.includes('.')) {
+      // Extract subdomain from hostname (e.g., 'marketlube.digitalerp.com')
+      const subdomain = hostname.split('.')[0];
+      return subdomain !== 'www' && subdomain !== 'digitalerp' ? subdomain : null;
+    }
+    
+    // Fallback for development (localhost)
+    const pathSegments = window.location.pathname.split('/').filter(Boolean);
+    return pathSegments[0] || 'marketlube'; // Default for development
   };
 
+  // Enhanced tenant switching with database context
   const switchTenant = async (tenantId: string) => {
     dispatch({ type: 'SET_LOADING', payload: true });
+    dispatch({ type: 'SET_ERROR', payload: null });
+    
     try {
-      // In real app, this would be an API call
-      const tenant = mockTenants.find(t => t.id === tenantId || t.subdomain === tenantId);
-      if (tenant) {
-        dispatch({ type: 'SET_TENANT', payload: tenant });
-        
-        // Load user for this tenant
-        const user = mockUsers.find(u => u.tenantId === tenant.id);
-        if (user) {
-          dispatch({ type: 'SET_USER', payload: user });
-        }
+      // In development, use mock data
+      if (import.meta.env.DEV) {
+        const tenant = mockTenants.find(t => t.id === tenantId || t.subdomain === tenantId);
+        if (tenant) {
+          // Set tenant context in API service for database isolation
+          api.setTenantContext(tenant.id);
+          
+          dispatch({ type: 'SET_TENANT', payload: tenant });
+          
+          // Load user for this tenant
+          const user = mockUsers.find(u => u.tenantId === tenant.id);
+          if (user) {
+            dispatch({ type: 'SET_USER', payload: user });
+          }
 
-        // Load config for this tenant
-        const config = mockConfigs.filter(c => c.tenantId === tenant.id);
-        dispatch({ type: 'SET_CONFIG', payload: config });
+          // Load config for this tenant
+          const config = mockConfigs.filter(c => c.tenantId === tenant.id);
+          dispatch({ type: 'SET_CONFIG', payload: config });
+          
+          console.log(`Tenant context set: ${tenant.companyName} (${tenant.id})`);
+        } else {
+          throw new Error('Tenant not found');
+        }
       } else {
-        dispatch({ type: 'SET_ERROR', payload: 'Tenant not found' });
+        // Production: Validate tenant with backend
+        const response = await authApi.validateTenant(tenantId);
+        
+        if (response.success && response.data) {
+          const tenant = response.data as Tenant;
+          
+          // Set tenant context in API service for database isolation
+          api.setTenantContext(tenant.id);
+          
+          dispatch({ type: 'SET_TENANT', payload: tenant });
+          
+          // Load additional tenant data
+          await loadTenantData(tenant.id);
+        } else {
+          throw new Error(response.error || 'Tenant validation failed');
+        }
       }
     } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to load tenant data' });
+      console.error('Tenant switch error:', error);
+      dispatch({ 
+        type: 'SET_ERROR', 
+        payload: error instanceof Error ? error.message : 'Failed to load tenant data' 
+      });
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
   };
 
-  const updateTenantConfig = async (configUpdate: Partial<TenantConfig>) => {
-    dispatch({ type: 'UPDATE_CONFIG', payload: configUpdate });
-    // In real app, this would be an API call to save the config
+  // Load tenant-specific data from API
+  const loadTenantData = async (tenantId: string) => {
+    try {
+      // Load user data
+      const userResponse = await authApi.getCurrentUser();
+      if (userResponse.success && userResponse.data) {
+        dispatch({ type: 'SET_USER', payload: userResponse.data as TenantUser });
+      }
+
+      // Load tenant configuration
+      const configResponse = await configApi.get();
+      if (configResponse.success && configResponse.data) {
+        dispatch({ type: 'SET_CONFIG', payload: configResponse.data as TenantConfig[] });
+      }
+    } catch (error) {
+      console.error('Failed to load tenant data:', error);
+    }
   };
 
-  // Initialize tenant on mount
-  useEffect(() => {
-    const subdomain = getCurrentTenantFromURL();
-    if (subdomain) {
-      switchTenant(subdomain);
+  // Enhanced config update with API persistence
+  const updateTenantConfig = async (configUpdate: Partial<TenantConfig>) => {
+    try {
+      dispatch({ type: 'UPDATE_CONFIG', payload: configUpdate });
+      
+      // Persist to backend (in production)
+      if (!import.meta.env.DEV) {
+        const response = await configApi.update(configUpdate);
+        if (!response.success) {
+          throw new Error(response.error);
+        }
+      }
+      
+      console.log('Tenant config updated:', configUpdate);
+    } catch (error) {
+      console.error('Failed to update tenant config:', error);
+      dispatch({ 
+        type: 'SET_ERROR', 
+        payload: error instanceof Error ? error.message : 'Failed to update configuration' 
+      });
     }
+  };
+
+  // Clear tenant context (for logout)
+  const clearTenantContext = () => {
+    dispatch({ type: 'CLEAR_TENANT_DATA' });
+    // Clear API context as well
+    api.setTenantContext('');
+    console.log('Tenant context cleared');
+  };
+
+  // Initialize tenant on mount with validation
+  useEffect(() => {
+    const initializeTenant = async () => {
+      const subdomain = getCurrentTenantFromURL();
+      if (subdomain) {
+        await switchTenant(subdomain);
+      } else {
+        dispatch({ type: 'SET_ERROR', payload: 'No tenant specified' });
+      }
+    };
+
+    initializeTenant();
   }, []);
+
+  // Monitor tenant changes (for subdomain routing)
+  useEffect(() => {
+    const handleLocationChange = () => {
+      const newSubdomain = getCurrentTenantFromURL();
+      if (newSubdomain && newSubdomain !== state.tenant?.subdomain) {
+        switchTenant(newSubdomain);
+      }
+    };
+
+    // Listen for navigation changes
+    window.addEventListener('popstate', handleLocationChange);
+    return () => window.removeEventListener('popstate', handleLocationChange);
+  }, [state.tenant?.subdomain]);
+
+  // Debug logging for development
+  useEffect(() => {
+    if (import.meta.env.DEV && state.tenant) {
+      console.log('Current Tenant:', {
+        name: state.tenant.companyName,
+        subdomain: state.tenant.subdomain,
+        plan: state.tenant.subscription.plan,
+        users: `${state.tenant.subscription.currentUsers}/${state.tenant.subscription.maxUsers}`
+      });
+    }
+  }, [state.tenant]);
 
   const value: TenantContext = {
     tenant: state.tenant,
@@ -304,7 +427,10 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     switchTenant,
     updateTenantConfig,
     isLoading: state.isLoading,
-    error: state.error
+    error: state.error,
+    // Additional methods for enhanced functionality
+    clearTenantContext,
+    loadTenantData: () => state.tenant ? loadTenantData(state.tenant.id) : Promise.resolve(),
   };
 
   return (

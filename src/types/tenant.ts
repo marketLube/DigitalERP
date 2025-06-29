@@ -85,4 +85,7 @@ export interface TenantContext {
   updateTenantConfig: (config: Partial<TenantConfig>) => Promise<void>;
   isLoading: boolean;
   error: string | null;
+  // Enhanced methods for shared database architecture
+  clearTenantContext: () => void;
+  loadTenantData: () => Promise<void>;
 } 
